@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "SafeScroll Parental Controls",
+  "version": "1.0.0",
+  "description": "Age-based, PIN-locked parental controls for TikTok, Snapchat, Instagram, Facebook, Threads, Messenger and WhatsApp on the web.",
+  "permissions": ["storage", "declarativeNetRequest", "tabs"],
+  "host_permissions": [
+    "*://*.tiktok.com/*", "*://*.snapchat.com/*", "*://*.instagram.com/*",
+    "*://*.facebook.com/*", "*://*.messenger.com/*", "*://*.threads.net/*",
+    "*://*.threads.com/*", "*://*.whatsapp.com/*", "*://*.meta.ai/*"
+  ],
+  "background": { "service_worker": "src/background.js", "type": "module" },
+  "content_scripts": [{
+    "matches": [
+      "*://*.tiktok.com/*", "*://*.snapchat.com/*", "*://*.instagram.com/*",
+      "*://*.facebook.com/*", "*://*.messenger.com/*", "*://*.threads.net/*",
+      "*://*.threads.com/*", "*://*.whatsapp.com/*", "*://*.meta.ai/*"
+    ],
+    "js": ["src/filters.js", "src/policy.js", "src/sites.js", "src/content.js"],
+    "run_at": "document_start",
+    "all_frames": false
+  }],
+  "options_page": "options/options.html",
+  "action": { "default_popup": "popup/popup.html", "default_title": "SafeScroll" },
+  "web_accessible_resources": [{ "resources": ["blocked/blocked.html"], "matches": ["<all_urls>"] }]
+}

@@ -1,0 +1,48 @@
+# SafeScroll network blocklist (hosts / Pi-hole / AdGuard / NextDNS denylist format).
+# Use this to block the NATIVE mobile/desktop apps, which browser extensions cannot reach.
+# Remove a section's lines to allow that platform.
+
+# --- TikTok ---
+0.0.0.0 tiktok.com
+0.0.0.0 www.tiktok.com
+0.0.0.0 m.tiktok.com
+0.0.0.0 tiktokv.com
+0.0.0.0 tiktokcdn.com
+0.0.0.0 tiktokcdn-us.com
+0.0.0.0 musical.ly
+0.0.0.0 byteoversea.com
+0.0.0.0 ibytedtos.com
+0.0.0.0 ttwstatic.com
+
+# --- Snapchat ---
+0.0.0.0 snapchat.com
+0.0.0.0 web.snapchat.com
+0.0.0.0 snap.com
+0.0.0.0 sc-cdn.net
+0.0.0.0 snapkit.com
+0.0.0.0 feelinsonice-hrd.appspot.com
+
+# --- Instagram / Threads ---
+0.0.0.0 instagram.com
+0.0.0.0 www.instagram.com
+0.0.0.0 i.instagram.com
+0.0.0.0 cdninstagram.com
+0.0.0.0 threads.net
+0.0.0.0 www.threads.net
+0.0.0.0 threads.com
+
+# --- Facebook / Messenger / Meta AI ---
+0.0.0.0 facebook.com
+0.0.0.0 www.facebook.com
+0.0.0.0 m.facebook.com
+0.0.0.0 fb.com
+0.0.0.0 fbcdn.net
+0.0.0.0 fbsbx.com
+0.0.0.0 messenger.com
+0.0.0.0 m.me
+0.0.0.0 meta.ai
+
+# --- WhatsApp ---
+0.0.0.0 whatsapp.com
+0.0.0.0 web.whatsapp.com
+0.0.0.0 whatsapp.net

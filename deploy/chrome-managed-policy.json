@@ -1,0 +1,17 @@
+{
+  "_comment": "Locks SafeScroll on a child's Chrome profile/device. Replace EXTENSION_ID and UPDATE_URL. Windows: Group Policy / registry; macOS: configuration profile; Linux: /etc/opt/chrome/policies/managed/; ChromeOS: Google Admin or Family Link.",
+  "ExtensionSettings": {
+    "EXTENSION_ID": {
+      "installation_mode": "force_installed",
+      "update_url": "UPDATE_URL",
+      "toolbar_pin": "force_pinned"
+    }
+  },
+  "IncognitoModeAvailability": 1,
+  "DeveloperToolsAvailability": 2,
+  "BrowserGuestModeEnabled": false,
+  "BrowserAddPersonEnabled": false,
+  "ForceGoogleSafeSearch": true,
+  "ForceYouTubeRestrict": 2,
+  "DnsOverHttpsMode": "off"
+}

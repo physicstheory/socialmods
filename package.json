@@ -1,0 +1,10 @@
+{
+  "name": "safescroll",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Age-based parental controls for TikTok, Snapchat and Meta apps",
+  "scripts": {
+    "test": "node --test tests/policy.test.js",
+    "zip": "cd extension && zip -r ../safescroll.zip . -x '*.DS_Store'"
+  }
+}

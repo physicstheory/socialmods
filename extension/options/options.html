@@ -4,72 +4,75 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SafeScroll Parent Settings</title>
+<link rel="stylesheet" href="../ui/base.css">
 <link rel="stylesheet" href="options.css">
 </head>
 <body>
-<main>
-  <h1>SafeScroll parent settings</h1>
 
-  <section id="pinGate" hidden>
-    <h2>Enter parent PIN</h2>
-    <form id="unlockForm"><input id="unlockPin" type="password" inputmode="numeric" autocomplete="off" minlength="6" required>
-      <button>Unlock</button></form>
-    <p id="unlockMsg" class="msg"></p>
-  </section>
+<!-- First-time setup -->
+<section id="setup" class="center-screen" hidden>
+  <form id="setupForm" class="auth-card">
+    <div class="logo-lg" data-icon="shield"></div>
+    <h1>Set up SafeScroll</h1>
+    <p class="muted">Create a parent PIN and enter your child's age. Until you finish, every supported app is blocked.</p>
+    <label class="field">Parent PIN <span class="muted">(6+ digits)</span>
+      <input id="newPin" class="pin" type="password" inputmode="numeric" minlength="6" autocomplete="new-password" required></label>
+    <label class="field">Confirm PIN
+      <input id="newPin2" class="pin" type="password" inputmode="numeric" minlength="6" autocomplete="new-password" required></label>
+    <label class="field">Child's age
+      <input id="setupAge" type="number" min="0" max="99" required placeholder="e.g. 14"></label>
+    <p id="setupMsg" class="error" role="alert"></p>
+    <button class="btn primary block">Create PIN and continue</button>
+  </form>
+</section>
 
-  <section id="setup" hidden>
-    <h2>First-time setup</h2>
-    <p>Until setup is done, every supported site is blocked.</p>
-    <form id="setupForm">
-      <label>Create a parent PIN (6+ digits) <input id="newPin" type="password" inputmode="numeric" minlength="6" required></label>
-      <label>Confirm PIN <input id="newPin2" type="password" inputmode="numeric" minlength="6" required></label>
-      <label>Child's age <input id="setupAge" type="number" min="0" max="99" required></label>
-      <button>Save and continue</button>
-    </form>
-    <p id="setupMsg" class="msg"></p>
-  </section>
+<!-- PIN gate -->
+<section id="pinGate" class="center-screen" hidden>
+  <form id="unlockForm" class="auth-card">
+    <div class="logo-lg" data-icon="lock"></div>
+    <h1>Parent settings are locked</h1>
+    <p class="muted">Enter your parent PIN to view or change the rules.</p>
+    <input id="unlockPin" class="pin" type="password" inputmode="numeric" autocomplete="off" minlength="6" required aria-label="Parent PIN" placeholder="••••••">
+    <p id="unlockMsg" class="error" role="alert"></p>
+    <button class="btn primary block">Unlock</button>
+  </form>
+</section>
 
-  <section id="panel" hidden>
-    <div class="row">
-      <label>Child's age <input id="age" type="number" min="0" max="99"></label>
-      <span id="tierBadge" class="badge"></span>
+<!-- Dashboard -->
+<div id="panel" hidden>
+  <header class="topbar">
+    <div class="brand"><span class="logo" data-icon="shield"></span><span>SafeScroll</span></div>
+    <div class="top-right">
+      <span id="profilePill" class="pill"></span>
+      <button id="changePin" class="btn ghost" type="button">Change PIN</button>
+      <button id="lock" class="btn ghost" type="button"><span data-icon="lock"></span>Lock</button>
     </div>
-    <p class="hint">🔒 Locked settings are required for this age and can't be turned off. You can always make things stricter.</p>
+  </header>
 
-    <h2>Platforms</h2>
-    <div id="platforms" class="grid"></div>
+  <div class="layout">
+    <nav class="sidenav" aria-label="Sections">
+      <a href="#overview"><span data-icon="user"></span>Child</a>
+      <a href="#foryou"><span data-icon="play"></span>For You feed</a>
+      <a href="#apps"><span data-icon="grid"></span>Apps</a>
+      <a href="#features"><span data-icon="sliders"></span>Features</a>
+      <a href="#filters"><span data-icon="filter"></span>Content filters</a>
+      <a href="#friends"><span data-icon="users"></span>Friends</a>
+      <a href="#time"><span data-icon="clock"></span>Screen time</a>
+    </nav>
+    <main id="main"></main>
+  </div>
 
-    <h2>Feeds &amp; features</h2>
-    <div id="toggles" class="grid"></div>
+  <div id="savebar" class="savebar" hidden>
+    <span>You have unsaved changes</span>
+    <div><button id="discard" class="btn ghost" type="button">Discard</button>
+      <button id="save" class="btn primary" type="button">Save changes</button></div>
+  </div>
+  <div id="toast" class="toast" role="status" hidden></div>
+</div>
 
-    <h2>Content filters</h2>
-    <div id="categories" class="grid"></div>
-    <label>Filtered posts are
-      <select id="filterMode"><option value="remove">removed</option><option value="blur">blurred</option></select></label>
-    <label>Extra blocked words (one per line)<textarea id="customTerms" rows="4"></textarea></label>
-
-    <h2>Who they can friend / follow</h2>
-    <p class="hint">When "Approved accounts only" is on, follow / add friend / message buttons only appear on these profiles.</p>
-    <label>Approved usernames (one per line)<textarea id="friendAllowlist" rows="5"></textarea></label>
-
-    <h2>Time</h2>
-    <label>Daily limit (minutes, 0 = none) <input id="dailyMinutes" type="number" min="0"></label>
-    <div class="row">
-      <label>Bedtime from <input id="bedStart" type="time"></label>
-      <label>to <input id="bedEnd" type="time"></label>
-    </div>
-    <p id="usage" class="hint"></p>
-
-    <div class="row actions">
-      <button id="save">Save</button>
-      <button id="changePin" type="button" class="secondary">Change PIN</button>
-      <button id="lock" type="button" class="secondary">Lock</button>
-    </div>
-    <p id="saveMsg" class="msg"></p>
-  </section>
-</main>
 <script src="../src/filters.js"></script>
 <script src="../src/policy.js"></script>
+<script src="../ui/icons.js"></script>
 <script src="options.js"></script>
 </body>
 </html>

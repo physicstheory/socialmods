@@ -1,9 +1,36 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>SafeScroll</title>
-<style>body{font:14px system-ui,sans-serif;width:260px;padding:12px;margin:0}h1{font-size:16px;margin:0 0 8px}p{margin:4px 0;color:#555}button{margin-top:10px;width:100%;padding:8px;border:0;border-radius:8px;background:#2b6cb0;color:#fff}</style>
+<link rel="stylesheet" href="../ui/base.css">
+<style>
+  body{width:320px;margin:0}
+  .head{display:flex;align-items:center;gap:12px;padding:16px 16px 12px}
+  .logo{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff}
+  .logo .ic{width:20px;height:20px}
+  .head b{display:block;font-size:15px}
+  .status{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:650;color:var(--ok)}
+  .status::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+  .status.warn{color:var(--warn)}
+  .body{padding:0 16px 16px;display:flex;flex-direction:column;gap:10px}
+  .tile{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px}
+  .tile .top{display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:8px}
+  .tile .top span{color:var(--muted)}
+  .bar{height:7px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--accent);border-radius:99px}
+  .kv{display:flex;align-items:center;gap:10px;font-size:13.5px}
+  .kv .ic{color:var(--muted)}
+  .kv b{margin-left:auto;font-weight:650}
+  .btn{width:100%}
+</style>
 </head><body>
-<h1>🛡️ SafeScroll is on</h1>
-<p id="tier"></p><p id="used"></p>
-<button id="open">Parent settings</button>
-<script src="../src/filters.js"></script><script src="../src/policy.js"></script><script src="popup.js"></script>
+<div class="head"><div class="logo" data-icon="shield"></div><div><b>SafeScroll</b><span id="state" class="status">Protection on</span></div></div>
+<div class="body">
+  <div class="tile"><div class="top"><span>Screen time today</span><b id="used"></b></div><div class="bar"><i id="usedBar"></i></div></div>
+  <div class="tile" style="display:flex;flex-direction:column;gap:10px">
+    <div class="kv"><span data-icon="user"></span>Rules<b id="tier"></b></div>
+    <div class="kv"><span data-icon="play"></span>For You feed<b id="fy"></b></div>
+    <div class="kv"><span data-icon="moon"></span>Bedtime<b id="bed"></b></div>
+  </div>
+  <button id="open" class="btn primary"><span data-icon="lock"></span>Parent settings</button>
+</div>
+<script src="../src/filters.js"></script><script src="../src/policy.js"></script><script src="../ui/icons.js"></script><script src="popup.js"></script>
 </body></html>

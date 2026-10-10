@@ -23,6 +23,7 @@
         disableDMs: ['a[href^="/messages"]', '[data-e2e="top-dm-icon"]'],
         hideComments: ['[data-e2e="comment-list"]', '[data-e2e="comment-icon"]', '[data-e2e="browse-comment"]', 'div[class*="CommentListContainer"]']
       },
+      fypExtraHide: ['a[href^="/shop"]', '[data-e2e="nav-shop"]', '[data-e2e*="live-card"]', '[data-e2e="video-ad-tag"]', 'a[href*="/live"]'],
       posts: ['[data-e2e="recommend-list-item-container"]', '[data-e2e="user-post-item"]', 'article', '[data-e2e="comment-level-1"]', '[data-e2e="search_top-item"]'],
       profile: p => (p.match(/^\/@([^/?#]+)/) || [])[1],
       followText: [/^follow$/i, /^follow back$/i, /^add friend$/i, /^message$/i]
@@ -70,6 +71,7 @@
         disableStories: ['[role="menu"] [aria-label*="Story" i]', 'div:has(> ul > li canvas)'],
         hideComments: ['ul._a9z6', 'section:has(textarea[aria-label*="comment" i])']
       },
+      fypExtraHide: ['a[href*="/shop"]', 'article:has(a[href*="/ads/"])', 'a[href*="/live/"]'],
       posts: ['article', 'div[role="dialog"] ul > div', 'ul > li[role="menuitem"]'],
       profile: p => {
         const m = p.match(/^\/([A-Za-z0-9._]+)\/?$/);
@@ -100,6 +102,7 @@
         disableDMs: ['[aria-label="Messenger" i]', 'a[href*="/messages"]'],
         hideComments: ['[aria-label*="Comment" i][role="article"]', 'form[role="presentation"]:has([aria-label*="comment" i])']
       },
+      fypExtraHide: ['a[href*="/marketplace"]', 'a[href*="/watch/live"]', 'div[role="article"]:has(a[href*="/ads/about"])'],
       posts: ['div[role="article"]', '[data-pagelet^="FeedUnit"]', 'div[aria-posinset]'],
       profile: p => {
         if (p.startsWith("/profile.php")) return new URLSearchParams(location.search).get("id");

@@ -16,8 +16,8 @@ test("tiers by age", () => {
 });
 
 test("locked toggles cannot be loosened", () => {
-  const c = P.effectiveSettings(14, { disableForYou: false, hideFriendSuggestions: false, disableDMs: true });
-  assert.equal(c.disableForYou, true);
+  const c = P.effectiveSettings(14, { disableExplore: false, hideFriendSuggestions: false, disableDMs: true });
+  assert.equal(c.disableExplore, true);
   assert.equal(c.hideFriendSuggestions, true);
   assert.equal(c.disableDMs, true, "tightening allowed");
 });
@@ -54,4 +54,46 @@ test("matcher catches categories and evasions", () => {
   assert.equal(m("this is a BADWORD").category, "custom");
   assert.equal(m("my class assignment on shellfish"), null, "no substring false positives");
   assert.equal(m("cute dog video"), null);
+});
+
+test("For You cannot be turned on under 13", () => {
+  const c = P.effectiveSettings(11, { disableForYou: false });
+  assert.equal(c.disableForYou, true);
+  assert.equal(c.forYou.allowed, false);
+  assert.equal(c.forYou.enabled, false);
+});
+
+test("For You can be turned on at 13-15 but is heavily limited", () => {
+  const off = P.effectiveSettings(14, {});
+  assert.equal(off.forYou.enabled, false, "off by default");
+  const on = P.effectiveSettings(14, { disableForYou: false });
+  assert.equal(on.forYou.enabled, true);
+  assert.equal(on.forYou.dailyMinutes, 15);
+  assert.equal(on.forYou.breakEveryMinutes, 5);
+  assert.equal(on.forYou.maxPostsPerDay, 40);
+  assert.deepEqual(on.forYou.hours, { start: "15:00", end: "20:00" });
+  assert.equal(on.forYou.filterMode, "remove");
+  assert.equal(on.forYou.filterCategories.length, P.ALL_CATEGORIES.length);
+});
+
+test("For You limits scale with age", () => {
+  const a = P.effectiveSettings(14, { disableForYou: false }).forYou;
+  const b = P.effectiveSettings(17, { disableForYou: false }).forYou;
+  const c = P.effectiveSettings(30, { disableForYou: false }).forYou;
+  assert.ok(a.dailyMinutes < b.dailyMinutes);
+  assert.ok(a.maxPostsPerDay < b.maxPostsPerDay);
+  assert.equal(c.dailyMinutes, 0, "adults unlimited");
+  assert.equal(c.hours, null);
+});
+
+test("parents can tighten but not loosen For You limits", () => {
+  const lim = (age, l) => P.effectiveSettings(age, { disableForYou: false, forYouLimits: l }).forYou;
+  assert.equal(lim(14, { dailyMinutes: 10 }).dailyMinutes, 10);
+  assert.equal(lim(14, { dailyMinutes: 90 }).dailyMinutes, 15);
+  assert.equal(lim(14, { dailyMinutes: 0 }).dailyMinutes, 15, "can't remove the cap");
+  assert.equal(lim(14, { maxPostsPerDay: 500 }).maxPostsPerDay, 40);
+  assert.equal(lim(14, { breakEveryMinutes: 3 }).breakEveryMinutes, 3);
+  assert.deepEqual(lim(14, { hours: { start: "16:00", end: "18:00" } }).hours, { start: "16:00", end: "18:00" });
+  assert.deepEqual(lim(14, { hours: { start: "06:00", end: "23:00" } }).hours, { start: "15:00", end: "20:00" }, "outside window rejected");
+  assert.equal(lim(30, { dailyMinutes: 45 }).dailyMinutes, 45, "adults may add limits");
 });

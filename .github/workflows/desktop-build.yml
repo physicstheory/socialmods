@@ -1,0 +1,42 @@
+# Builds SafeScroll-Preview.exe (portable, no installer) on a Windows machine and
+# publishes it at a fixed link:
+# https://github.com/<owner>/<repo>/releases/download/desktop-preview/SafeScroll-Preview.exe
+name: Build Windows preview
+
+on:
+  push:
+    paths: ["desktop/**", "userscript/**", "extension/**", ".github/workflows/desktop-build.yml", "!**/*.md"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build the SafeScroll script
+        run: node userscript/build.mjs && cp userscript/safescroll.user.js desktop/
+      - name: Build SafeScroll-Preview.exe
+        working-directory: desktop
+        run: npm install --no-audit --no-fund && npx electron-builder --win portable --publish never
+      - name: Publish to the fixed download link
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete desktop-preview --cleanup-tag --yes || true
+          gh release create desktop-preview desktop/dist/SafeScroll-Preview.exe --target "$GITHUB_SHA" --latest=false \
+            --title "SafeScroll Preview for Windows" \
+            --notes "Double-click to run (no install). Windows may warn because it isn't signed: More info → Run anyway."
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SafeScroll-Preview-exe
+          path: desktop/dist/SafeScroll-Preview.exe

@@ -22,7 +22,9 @@
   // Hide the page until settings load so nothing slips through on first paint.
   const veil = document.createElement("style");
   veil.textContent = "html{visibility:hidden!important}";
-  whenRoot(() => (document.head || document.documentElement).appendChild(veil));
+  let veilLifted = false;
+  whenRoot(() => { if (!veilLifted) (document.head || document.documentElement).appendChild(veil); });
+  function liftVeil() { veilLifted = true; veil.remove(); }
 
   function blockPage(reason) {
     const back = site.safeLanding ? new URL(site.safeLanding, location.href).href : "";
@@ -272,7 +274,7 @@
     applyCss();
     checkRoute();
     if (cfg.dailyMinutes > 0 && (await usedMinutes()) >= cfg.dailyMinutes) return blockPage("timelimit");
-    veil.remove();
+    liftVeil();
     schedule();
   }
 

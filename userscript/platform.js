@@ -60,7 +60,9 @@ function overlayHost(id, z) {
   const host = document.createElement("div");
   host.id = id;
   host.style.cssText = `all:initial;position:fixed;inset:0;z-index:${z};visibility:visible!important;display:block`;
-  (document.documentElement || document).appendChild(host);
+  const attach = () => document.documentElement.appendChild(host);
+  if (document.documentElement) attach();
+  else new MutationObserver((_, mo) => { if (document.documentElement) { mo.disconnect(); attach(); } }).observe(document, { childList: true });
   return { host, root: host.attachShadow({ mode: "closed" }) };
 }
 

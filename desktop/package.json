@@ -1,0 +1,24 @@
+{
+  "name": "safescroll-preview",
+  "productName": "SafeScroll Preview",
+  "version": "1.0.0",
+  "description": "SafeScroll's filters, limits and parent settings on TikTok's mobile website, in a phone-sized window.",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable --publish never"
+  },
+  "devDependencies": {
+    "electron": "38.2.0",
+    "electron-builder": "26.0.12"
+  },
+  "build": {
+    "appId": "com.example.safescroll.preview",
+    "productName": "SafeScroll Preview",
+    "files": ["main.js", "preload.js", "safescroll.user.js", "package.json"],
+    "win": { "target": "portable" },
+    "portable": { "artifactName": "SafeScroll-Preview.exe" },
+    "directories": { "output": "dist" }
+  }
+}

@@ -89,7 +89,9 @@ function overlayHost(id, z) {
   const host = document.createElement("div");
   host.id = id;
   host.style.cssText = `all:initial;position:fixed;inset:0;z-index:${z};visibility:visible!important;display:block`;
-  (document.documentElement || document).appendChild(host);
+  const attach = () => document.documentElement.appendChild(host);
+  if (document.documentElement) attach();
+  else new MutationObserver((_, mo) => { if (document.documentElement) { mo.disconnect(); attach(); } }).observe(document, { childList: true });
   return { host, root: host.attachShadow({ mode: "closed" }) };
 }
 
@@ -683,7 +685,9 @@ if (!data.pinHash) {
   // Hide the page until settings load so nothing slips through on first paint.
   const veil = document.createElement("style");
   veil.textContent = "html{visibility:hidden!important}";
-  whenRoot(() => (document.head || document.documentElement).appendChild(veil));
+  let veilLifted = false;
+  whenRoot(() => { if (!veilLifted) (document.head || document.documentElement).appendChild(veil); });
+  function liftVeil() { veilLifted = true; veil.remove(); }
 
   function blockPage(reason) {
     const back = site.safeLanding ? new URL(site.safeLanding, location.href).href : "";
@@ -933,7 +937,7 @@ if (!data.pinHash) {
     applyCss();
     checkRoute();
     if (cfg.dailyMinutes > 0 && (await usedMinutes()) >= cfg.dailyMinutes) return blockPage("timelimit");
-    veil.remove();
+    liftVeil();
     schedule();
   }
 

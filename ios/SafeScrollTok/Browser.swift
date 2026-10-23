@@ -132,7 +132,7 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
         let store = WKWebsiteDataStore.default()
         store.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast) {
             DispatchQueue.main.async {
-                self.goHome()
+                self.load(AppModel.shared.startURL)
                 done?()
             }
         }

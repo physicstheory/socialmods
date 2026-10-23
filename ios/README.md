@@ -13,9 +13,9 @@ A personal iPhone app that opens TikTok's mobile website inside the app with the
 2. **Welcome screen** (native):
    - If accounts are allowed for that age and country: **Sign in**, **Create an account** or **Watch without an account**. Log in and sign up are TikTok's own pages, opened inside the app. The app never sees your password.
    - If they're not allowed (for example under 16 in Australia): **Start watching**, logged out.
-3. **Every launch after that:** the app opens straight into TikTok with your saved settings, sign-in and limits. Setup and the welcome screen never show again. TikTok's mobile site fills the screen, with a bottom bar (**Back**, **Home**, **Reload**) and a small **⚙ cog** in the top-right corner for settings.
-   - **Home** shows For You (with today's time left), Following (when logged in) and the approved creators from Settings.
-   - **⚙ Settings** is the same parent dashboard as the extension, behind the PIN. Its **⋯** menu has **Sign out of TikTok**.
+3. **Every launch after that:** the app opens straight into TikTok with your saved settings, sign-in and limits. Setup and the welcome screen never show again. It opens on For You (if switched on) or Following. TikTok's mobile site fills the whole screen with its own bottom bar, exactly as on tiktok.com in Safari. The only addition is a small **⚙ cog** in the top-right corner for settings. Swipe from the left edge to go back.
+   - The approved-creators page opens on its own when there's no account and For You is off. It's also in the settings sheet's **⋯** menu.
+   - **⚙ Settings** is the same parent dashboard as the extension, behind the PIN. Its **⋯** menu has **Back to TikTok**, **Approved creators**, **Reload page** and **Sign out of TikTok**.
 
 ## What it does automatically
 - **Filters run on every TikTok page:** content filters, For You limits and breaks, the approved-friends list, hidden suggestions, screen time and bedtime. These are the extension's scripts, injected into an isolated script world that TikTok's own code can't see.

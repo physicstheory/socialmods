@@ -21,6 +21,14 @@ final class AppModel: ObservableObject {
     lazy var browser = Browser()
 
     var accountsAllowed: Bool { config["accountsAllowed"] as? Bool ?? false }
+    /// Where the app opens: TikTok's For You if it's on, otherwise Following. SafeScroll's own
+    /// home page (approved creators) only when there's no account and For You is off.
+    var startURL: URL {
+        let forYou = config["forYou"] as? [String: Any]
+        if forYou?["enabled"] as? Bool == true { return URL(string: "https://www.tiktok.com/foryou")! }
+        if accountsAllowed { return URL(string: "https://www.tiktok.com/following")! }
+        return Browser.homeURL
+    }
     var minAccountAge: Int { (config["minAccountAge"] as? NSNumber)?.intValue ?? 13 }
 
     private init() {
@@ -101,7 +109,7 @@ struct WelcomeView: View {
     }
 
     private func start(_ link: String?) {
-        model.browser.load(link.flatMap(URL.init(string:)) ?? Browser.homeURL)
+        model.browser.load(link.flatMap(URL.init(string:)) ?? model.startURL)
         model.welcomeDone = true
     }
 }
@@ -111,16 +119,10 @@ struct MainView: View {
     @ObservedObject var browser: Browser
 
     var body: some View {
-        VStack(spacing: 0) {
-            WebViewHost(webView: browser.webView)
-            HStack {
-                bar("chevron.left", "Back") { browser.webView.goBack() }.disabled(!browser.canGoBack)
-                bar("house", "Home") { browser.goHome() }
-                bar("arrow.clockwise", "Reload") { browser.webView.reload() }
-            }
-            .padding(.vertical, 6)
-            .background(.bar)
-        }
+        // Just TikTok's own mobile site, with its own bottom bar (Home, Friends, +, Inbox, Profile).
+        // Swipe from the left edge to go back.
+        WebViewHost(webView: browser.webView)
+            .background(Color.black.ignoresSafeArea())
         // Small cog for parent settings, top-right on every screen.
         .overlay(alignment: .topTrailing) {
             Button { model.showSettings = true } label: {
@@ -157,14 +159,7 @@ struct MainView: View {
                     }
             }
         }
-        .onAppear { if !browser.hasLoaded { browser.goHome() } }
-    }
-
-    private func bar(_ icon: String, _ label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: icon).font(.system(size: 19, weight: .medium)).frame(maxWidth: .infinity, minHeight: 36)
-        }
-        .accessibilityLabel(label)
+        .onAppear { if !browser.hasLoaded { browser.load(model.startURL) } }
     }
 }
 
@@ -182,6 +177,9 @@ struct SettingsSheet: View {
                 .toolbar {
                     ToolbarItem(placement: .navigationBarLeading) {
                         Menu {
+                            Button { browser.load(AppModel.shared.startURL); dismiss() } label: { Label("Back to TikTok", systemImage: "play.rectangle") }
+                            Button { browser.goHome(); dismiss() } label: { Label("Approved creators", systemImage: "person.2") }
+                            Button { browser.webView.reload(); dismiss() } label: { Label("Reload page", systemImage: "arrow.clockwise") }
                             Button("Sign out of TikTok", role: .destructive) { confirmSignOut = true }
                         } label: { Image(systemName: "ellipsis.circle") }
                     }

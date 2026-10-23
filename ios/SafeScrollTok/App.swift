@@ -78,11 +78,11 @@ struct WelcomeView: View {
                 Text("Log in or create an account. TikTok opens inside this app with your filters and limits on.")
                     .multilineTextAlignment(.center).foregroundStyle(.secondary)
                 Button { start("https://www.tiktok.com/login") } label: {
-                    Text("Log in to TikTok").frame(maxWidth: .infinity)
+                    Text("Sign in").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent).controlSize(.large).padding(.top, 8)
                 Button { start("https://www.tiktok.com/signup") } label: {
-                    Text("Create a TikTok account").frame(maxWidth: .infinity)
+                    Text("Create an account").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered).controlSize(.large)
                 Button("Watch without an account") { start(nil) }.padding(.top, 4)

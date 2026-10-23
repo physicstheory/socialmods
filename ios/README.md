@@ -11,7 +11,7 @@ A personal iPhone app that opens TikTok's mobile website inside the app with the
 ## What happens when you open it
 1. **First launch:** the parent setup screen appears. Create a PIN and enter the age and country.
 2. **Welcome screen** (native):
-   - If accounts are allowed for that age and country: **Log in to TikTok**, **Create a TikTok account** or **Watch without an account**. Log in and sign up are TikTok's own pages, opened inside the app. The app never sees your password.
+   - If accounts are allowed for that age and country: **Sign in**, **Create an account** or **Watch without an account**. Log in and sign up are TikTok's own pages, opened inside the app. The app never sees your password.
    - If they're not allowed (for example under 16 in Australia): **Start watching**, logged out.
 3. **Main screen:** TikTok's mobile site with a bottom bar: **Back**, **Home**, **Reload** and **🛡 Settings**.
    - **Home** shows For You (with today's time left), Following (when logged in) and the approved creators from Settings.

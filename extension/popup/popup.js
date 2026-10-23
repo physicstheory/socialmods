@@ -1,8 +1,8 @@
 /* global SafeScrollPolicy, SafeScrollIcons, chrome */
 (async () => {
   SafeScrollIcons.hydrate();
-  const { age, overrides, usage = {}, fypUsage = {} } = await chrome.storage.local.get(["age", "overrides", "usage", "fypUsage"]);
-  const cfg = SafeScrollPolicy.effectiveSettings(age === undefined ? 0 : age, overrides);
+  const { age, overrides, region, usage = {}, fypUsage = {} } = await chrome.storage.local.get(["age", "overrides", "region", "usage", "fypUsage"]);
+  const cfg = SafeScrollPolicy.effectiveSettings(age === undefined ? 0 : age, overrides, region);
   const d = new Date().toISOString().slice(0, 10);
   const used = Math.round(usage[d] || 0);
   const $ = id => document.getElementById(id);

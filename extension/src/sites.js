@@ -11,7 +11,8 @@
         disableExplore: [/^\/explore/, /^\/discover/, /^\/tag\//, /^\/music\//, /^\/channel\//],
         disableLive: [/^\/live/, /\/live$/],
         disableSearch: [/^\/search/],
-        disableDMs: [/^\/messages/]
+        disableDMs: [/^\/messages/],
+        blockAccounts: [/^\/login/, /^\/signup/]
       },
       safeLanding: "/following",
       hide: {
@@ -21,6 +22,7 @@
         disableSearch: ['[data-e2e="search-box"]', 'form[action*="search"]', '[data-e2e="search-user-input"]'],
         hideFriendSuggestions: ['[data-e2e="suggest-accounts"]', '[data-e2e="recommend-list"]', '[data-e2e="nav-friends"]'],
         disableDMs: ['a[href^="/messages"]', '[data-e2e="top-dm-icon"]'],
+        blockAccounts: ['[data-e2e="top-login-button"]', '[data-e2e="nav-login-button"]', 'a[href^="/login"]', 'a[href^="/signup"]', '[data-e2e="login-modal"]'],
         hideComments: ['[data-e2e="comment-list"]', '[data-e2e="comment-icon"]', '[data-e2e="browse-comment"]', 'div[class*="CommentListContainer"]']
       },
       fypExtraHide: ['a[href^="/shop"]', '[data-e2e="nav-shop"]', '[data-e2e*="live-card"]', '[data-e2e="video-ad-tag"]', 'a[href*="/live"]'],
@@ -57,7 +59,8 @@
         disableLive: [/\/live\/?$/],
         disableDMs: [/^\/direct/],
         disableStories: [/^\/stories\//],
-        disableSearch: [/^\/explore\/search/, /^\/explore\/tags/]
+        disableSearch: [/^\/explore\/search/, /^\/explore\/tags/],
+        blockAccounts: [/^\/accounts\/(login|emailsignup|signup)/]
       },
       // Home feed defaults to algorithmic; "?variant=following" is chronological.
       forYouRedirect: (u) => (u.pathname === "/" && u.searchParams.get("variant") !== "following") ? "/?variant=following" : null,
@@ -69,6 +72,7 @@
         disableSearch: ['a[href="#"][role="link"] svg[aria-label="Search"]', 'svg[aria-label="Search"]'],
         hideFriendSuggestions: ['a[href="/explore/people/"]', 'div:has(> div > span > a[href="/explore/people/"])', '[aria-label*="Suggested for you" i]'],
         disableStories: ['[role="menu"] [aria-label*="Story" i]', 'div:has(> ul > li canvas)'],
+        blockAccounts: ['a[href^="/accounts/login"]', 'a[href^="/accounts/emailsignup"]'],
         hideComments: ['ul._a9z6', 'section:has(textarea[aria-label*="comment" i])']
       },
       fypExtraHide: ['a[href*="/shop"]', 'article:has(a[href*="/ads/"])', 'a[href*="/live/"]'],
@@ -89,7 +93,8 @@
         disableDMs: [/^\/messages/],
         disableStories: [/^\/stories/],
         disableSearch: [/^\/search/],
-        hideFriendSuggestions: [/^\/friends\/suggestions/, /^\/friends\/?$/]
+        hideFriendSuggestions: [/^\/friends\/suggestions/, /^\/friends\/?$/],
+        blockAccounts: [/^\/login/, /^\/r\.php/, /^\/reg\//]
       },
       forYouRedirect: (u) => (u.pathname === "/" || u.pathname === "/home.php") ? "/?sk=h_chr" : null,
       safeLanding: "/?sk=h_chr",

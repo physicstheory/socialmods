@@ -9,6 +9,7 @@ It has three layers. Use all three for the best coverage:
 | 1. Browser extension | Web versions of every supported service (feed control, content filters, friend limits, time limits) | `extension/` |
 | 2. Network blocklist | Native phone, tablet and desktop apps (whole-platform blocking) | `network/` |
 | 3. Device lock-down | Stops the child removing the extension, using incognito or using another browser | `deploy/` |
+| 4. iPhone app | TikTok's mobile site inside an app, with the same filters and settings built in ([setup guide](ios/README.md)) | `ios/` |
 
 ## What the rules do at each age
 
@@ -27,6 +28,8 @@ It has three layers. Use all three for the best coverage:
 | Daily limit / bedtime | — / 20:00–07:00 | 60 min / 21:30–07:00 | 120 min / 23:00–06:00 | none |
 
 If the age is unknown or setup hasn't been done, the **strictest tier** applies.
+
+**Country:** setup also asks for the country. In **Australia**, the Social Media Minimum Age law means no accounts under **16**. With Australia selected, log in and sign up are blocked under 16 and the apps can still be watched logged out. Elsewhere, accounts are allowed from 13.
 
 ### The For You feed: off, or on with limits
 Parents can switch the For You feed on or off. Under 13 it is **locked off** and can't be switched on. From 13 up, switching it on puts it in **limited mode**. Limits are set by age, and parents can make them tighter but never looser:
@@ -147,6 +150,8 @@ extension/popup/               Toolbar popup
 extension/blocked/             Page shown when something is blocked
 extension/ui/                  Shared styles and icons
 scripts/screenshots.mjs        Regenerates docs/screenshots with Playwright
+scripts/ios-web-check.mjs      Tests the iPhone app's web layer (shim, home, filters, login blocking)
+ios/                           iPhone app (see ios/README.md)
 network/blocklist-hosts.txt    DNS/hosts blocklist for native apps
 deploy/                        Browser lock-down policies
 tests/                         node --test suite

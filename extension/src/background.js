@@ -13,8 +13,8 @@ const DOMAINS = {
 };
 
 async function syncNetworkRules() {
-  const { age, overrides } = await chrome.storage.local.get(["age", "overrides"]);
-  const cfg = effectiveSettings(age === undefined ? 0 : age, overrides);
+  const { age, overrides, region } = await chrome.storage.local.get(["age", "overrides", "region"]);
+  const cfg = effectiveSettings(age === undefined ? 0 : age, overrides, region);
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
   const addRules = [];
   let id = 1;
@@ -39,4 +39,4 @@ chrome.runtime.onInstalled.addListener(details => {
   syncNetworkRules();
 });
 chrome.runtime.onStartup.addListener(syncNetworkRules);
-chrome.storage.onChanged.addListener((c, area) => { if (area === "local" && (c.age || c.overrides)) syncNetworkRules(); });
+chrome.storage.onChanged.addListener((c, area) => { if (area === "local" && (c.age || c.overrides || c.region)) syncNetworkRules(); });

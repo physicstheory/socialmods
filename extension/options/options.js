@@ -59,8 +59,17 @@ const clone = o => JSON.parse(JSON.stringify(o));
 const isDirty = () => JSON.stringify(saved) !== JSON.stringify(draft);
 
 // ---------- PIN ----------
+function newSalt() {
+  if (crypto.randomUUID) return crypto.randomUUID();
+  return [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
 async function hashPin(pin, salt) {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(salt + ":" + pin));
+  const input = salt + ":" + pin;
+  // Inside the iPhone app the page may not be a "secure context", so Web Crypto
+  // can be missing; the app then hashes natively with the same algorithm.
+  if (!(globalThis.crypto && crypto.subtle) && globalThis.SafeScrollNative) return SafeScrollNative.sha256(input);
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
   return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
@@ -78,19 +87,22 @@ async function stillUnlocked() {
 async function init() {
   hydrate();
   const { pinHash } = await chrome.storage.local.get("pinHash");
-  if (!pinHash) return show("setup");
+  if (!pinHash) {
+    $("setupRegion").innerHTML = regionOptions(P.guessRegion(navigator.language));
+    return show("setup");
+  }
   if (await stillUnlocked()) return openPanel();
   show("pinGate");
 }
 
 $("setupForm").addEventListener("submit", async e => {
   e.preventDefault();
-  const a = $("newPin").value, b = $("newPin2").value, age = Number($("setupAge").value);
+  const a = $("newPin").value, b = $("newPin2").value, age = Number($("setupAge").value), region = $("setupRegion").value;
   if (!/^\d{6,}$/.test(a)) return ($("setupMsg").textContent = "PIN must be at least 6 digits.");
   if (a !== b) return ($("setupMsg").textContent = "The PINs don't match.");
   if (!Number.isFinite(age) || age < 0 || age > 99) return ($("setupMsg").textContent = "Enter an age between 0 and 99.");
-  const salt = crypto.randomUUID();
-  await chrome.storage.local.set({ pinSalt: salt, pinHash: await hashPin(a, salt), age, overrides: {}, unlockedUntil: Date.now() + SESSION_MS });
+  const salt = newSalt();
+  await chrome.storage.local.set({ pinSalt: salt, pinHash: await hashPin(a, salt), age, region, overrides: {}, unlockedUntil: Date.now() + SESSION_MS });
   openPanel();
 });
 
@@ -141,7 +153,11 @@ const pct = (v, max) => max > 0 ? Math.min(100, Math.round(v / max * 100)) : 0;
 const fmtMin = m => m >= 60 ? `${Math.floor(m / 60)}h ${Math.round(m % 60)}m` : `${Math.round(m)} min`;
 
 // ---------- Sections ----------
-function renderOverview(tier) {
+function regionOptions(selected) {
+  return Object.entries(P.REGIONS).map(([k, r]) => `<option value="${k}" ${k === selected ? "selected" : ""}>${esc(r.label)}</option>`).join("");
+}
+
+function renderOverview(tier, cfg) {
   const scale = P.TIERS.map(t => `<span class="${t.id === tier.id ? "on" : ""}">${t.label}</span>`).join("");
   return card("overview", "user", "Child", "The age decides which rules apply and which are locked.", `
     <div class="overview">
@@ -150,6 +166,12 @@ function renderOverview(tier) {
         <button type="button" id="ageUp" aria-label="Increase age">${icon("plus")}</button></div>
       <div class="tier"><div class="name">${tier.label} rules</div><div class="desc">${TIER_DESC[tier.id]}</div>
         <div class="tier-scale">${scale}</div></div>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <div class="txt"><div class="t">Country</div><div class="d">${cfg.accountsAllowed
+        ? `Accounts allowed from ${cfg.minAccountAge}. Your child can log in or sign up.`
+        : `Accounts start at ${cfg.minAccountAge} here, so log in and sign up are off. Your child can watch public videos without an account.`}</div></div>
+      <select id="region" class="select" aria-label="Country">${regionOptions(cfg.region)}</select>
     </div>`);
 }
 
@@ -257,10 +279,10 @@ function renderTime(tier, cfg) {
 
 function render() {
   const tier = P.tierForAge(draft.age);
-  const cfg = P.effectiveSettings(draft.age, draft.overrides);
+  const cfg = P.effectiveSettings(draft.age, draft.overrides, draft.region);
   const y = window.scrollY;
   const focused = document.activeElement && document.activeElement.id;
-  $("main").innerHTML = renderOverview(tier) + renderForYou(tier, cfg) + renderApps(tier, cfg) +
+  $("main").innerHTML = renderOverview(tier, cfg) + renderForYou(tier, cfg) + renderApps(tier, cfg) +
     renderFeatures(tier, cfg) + renderFilters(tier, cfg) + renderFriends(tier, cfg) + renderTime(tier, cfg);
   $("profilePill").innerHTML = `${icon("user")}Age ${esc(draft.age)} · ${tier.label} rules`;
   $("savebar").hidden = !isDirty();
@@ -297,6 +319,7 @@ const main = $("main");
 main.addEventListener("change", e => {
   const t = e.target, id = t.id;
   if (id === "age") return setAge(t.value);
+  if (id === "region") { draft.region = t.value; return render(); }
   if (id === "fySwitch") return update(o => { o.disableForYou = !t.checked; });
   if (id.startsWith("app-")) return update(o => { o.blockedPlatforms = toggleIn(o.blockedPlatforms, id.slice(4), !t.checked); });
   if (id.startsWith("feat-")) return update(o => { o[id.slice(5)] = t.checked; });
@@ -347,7 +370,7 @@ $("save").addEventListener("click", async () => {
   if (!(await stillUnlocked())) return show("pinGate");
   const before = JSON.stringify(draft.overrides);
   materialize();
-  await chrome.storage.local.set({ age: draft.age, overrides: draft.overrides, unlockedUntil: Date.now() + SESSION_MS });
+  await chrome.storage.local.set({ age: draft.age, region: draft.region, overrides: draft.overrides, unlockedUntil: Date.now() + SESSION_MS });
   saved = clone(draft);
   render();
   toast(before === JSON.stringify(draft.overrides) ? "Saved. The new rules apply right away." : "Saved. Rules that are required at this age were kept on.");
@@ -366,7 +389,7 @@ $("changePin").addEventListener("click", async () => {
   const pin = prompt("Enter a new parent PIN (6+ digits)");
   if (pin === null) return;
   if (!/^\d{6,}$/.test(pin)) return toast("PIN not changed. It must be at least 6 digits.");
-  const salt = crypto.randomUUID();
+  const salt = newSalt();
   await chrome.storage.local.set({ pinSalt: salt, pinHash: await hashPin(pin, salt) });
   toast("PIN changed.");
 });
@@ -383,8 +406,8 @@ function trackNav() {
 }
 
 async function openPanel() {
-  const { age = 0, overrides = {}, usage = {}, fypUsage = {} } = await chrome.storage.local.get(["age", "overrides", "usage", "fypUsage"]);
-  saved = { age, overrides };
+  const { age = 0, region = "default", overrides = {}, usage = {}, fypUsage = {} } = await chrome.storage.local.get(["age", "region", "overrides", "usage", "fypUsage"]);
+  saved = { age, region, overrides };
   draft = clone(saved);
   stats = { usage: usage[today()] || 0, fyp: { minutes: 0, posts: 0, ...(fypUsage[today()] || {}) } };
   show("panel");

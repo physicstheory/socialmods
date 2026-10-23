@@ -84,6 +84,19 @@
     }
   ];
 
+  // Minimum age for holding a social media account, by country. Australia's
+  // Social Media Minimum Age law (in force 10 Dec 2025) sets 16 for TikTok,
+  // Snapchat, Instagram, Facebook and Threads; parental consent doesn't change it.
+  const REGIONS = {
+    default: { label: "Other / not listed", minAccountAge: 13 },
+    AU: { label: "Australia", minAccountAge: 16 }
+  };
+
+  function guessRegion(locale) {
+    const m = String(locale || "").match(/[-_]([A-Z]{2})\b/);
+    return m && REGIONS[m[1]] ? m[1] : "default";
+  }
+
   function tierForAge(age) {
     const a = Number(age);
     if (!Number.isFinite(a) || a < 0) return TIERS[0]; // unknown age -> strictest
@@ -127,7 +140,7 @@
 
   // Merge parent overrides onto tier defaults, discarding any override that
   // would loosen a locked setting.
-  function effectiveSettings(age, overrides) {
+  function effectiveSettings(age, overrides, region) {
     const tier = tierForAge(age);
     const base = JSON.parse(JSON.stringify(tier.settings));
     const o = overrides || {};
@@ -168,6 +181,14 @@
     if (!out.forYou.allowed) out.disableForYou = true;
     out.forYou.enabled = !out.disableForYou;
 
+    // Below the local account age: watch logged out only, no log in / sign up.
+    const reg = REGIONS[region] || REGIONS.default;
+    const a = Number(age);
+    out.region = REGIONS[region] ? region : "default";
+    out.minAccountAge = reg.minAccountAge;
+    out.accountsAllowed = Number.isFinite(a) && a >= reg.minAccountAge;
+    out.blockAccounts = !out.accountsAllowed;
+
     out.friendAllowlist = (o.friendAllowlist || []).map(s => String(s).trim().replace(/^@/, "").toLowerCase()).filter(Boolean);
     out.customTerms = (o.customTerms || []).map(String).filter(Boolean);
     out.tier = tier.id;
@@ -175,6 +196,6 @@
     return out;
   }
 
-  root.SafeScrollPolicy = { TIERS, FOR_YOU_LIMITS, forYouLimits, PLATFORMS, ALL_CATEGORIES, tierForAge, isLocked, effectiveSettings };
+  root.SafeScrollPolicy = { REGIONS, guessRegion, TIERS, FOR_YOU_LIMITS, forYouLimits, PLATFORMS, ALL_CATEGORIES, tierForAge, isLocked, effectiveSettings };
   if (typeof module !== "undefined") module.exports = root.SafeScrollPolicy;
 })(typeof globalThis !== "undefined" ? globalThis : this);

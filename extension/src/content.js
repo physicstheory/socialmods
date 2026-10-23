@@ -12,10 +12,17 @@
   let breakUntil = 0;
   let fyp = { date: "", minutes: 0, posts: 0 };
 
+  // Some engines run document-start scripts before <html> exists; wait for it.
+  function whenRoot(fn) {
+    if (document.documentElement) return fn();
+    const mo = new MutationObserver(() => { if (document.documentElement) { mo.disconnect(); fn(); } });
+    mo.observe(document, { childList: true });
+  }
+
   // Hide the page until settings load so nothing slips through on first paint.
   const veil = document.createElement("style");
   veil.textContent = "html{visibility:hidden!important}";
-  (document.head || document.documentElement).appendChild(veil);
+  whenRoot(() => (document.head || document.documentElement).appendChild(veil));
 
   function blockPage(reason) {
     const back = site.safeLanding ? new URL(site.safeLanding, location.href).href : "";
@@ -61,7 +68,7 @@
     const url = new URL(location.href);
 
     onFyp = isForYou(url);
-    document.documentElement.classList.toggle("safescroll-fyp", onFyp && cfg.forYou.enabled);
+    document.documentElement?.classList.toggle("safescroll-fyp", onFyp && cfg.forYou.enabled);
     if (onFyp) {
       if (!cfg.forYou.enabled) {
         if (site.safeLanding && !isSamePage(site.safeLanding, url)) return location.replace(new URL(site.safeLanding, url).href);
@@ -101,6 +108,7 @@
   }
 
   function applyCss() {
+    if (!document.documentElement) return whenRoot(applyCss);
     if (!styleEl) {
       styleEl = document.createElement("style");
       styleEl.id = "safescroll-style";
@@ -250,9 +258,9 @@
   }, 30000);
 
   async function load() {
-    const { age, overrides, fypUsage = {} } = await chrome.storage.local.get(["age", "overrides", "fypUsage"]);
+    const { age, overrides, region, fypUsage = {} } = await chrome.storage.local.get(["age", "overrides", "region", "fypUsage"]);
     // No setup yet -> strictest tier.
-    cfg = SafeScrollPolicy.effectiveSettings(age === undefined ? 0 : age, overrides);
+    cfg = SafeScrollPolicy.effectiveSettings(age === undefined ? 0 : age, overrides, region);
     matcher = SafeScrollFilters.buildMatcher(cfg.filterCategories, cfg.customTerms);
     const strictCats = [...new Set([...(cfg.forYou.filterCategories || []), ...cfg.filterCategories])];
     fypMatcher = SafeScrollFilters.buildMatcher(strictCats, cfg.customTerms);
@@ -266,11 +274,11 @@
     schedule();
   }
 
-  new MutationObserver(() => { if (cfg) schedule(); })
-    .observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+  whenRoot(() => new MutationObserver(() => { if (cfg) schedule(); })
+    .observe(document.documentElement, { childList: true, subtree: true, characterData: true }));
 
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === "local" && (changes.age || changes.overrides)) load();
+    if (area === "local" && (changes.age || changes.overrides || changes.region)) load();
   });
 
   load();

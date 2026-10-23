@@ -97,3 +97,20 @@ test("parents can tighten but not loosen For You limits", () => {
   assert.deepEqual(lim(14, { hours: { start: "06:00", end: "23:00" } }).hours, { start: "15:00", end: "20:00" }, "outside window rejected");
   assert.equal(lim(30, { dailyMinutes: 45 }).dailyMinutes, 45, "adults may add limits");
 });
+
+test("Australia: no accounts under 16, logged-out viewing only", () => {
+  const au14 = P.effectiveSettings(14, {}, "AU");
+  assert.equal(au14.accountsAllowed, false);
+  assert.equal(au14.blockAccounts, true);
+  assert.ok(!au14.blockedPlatforms.includes("tiktok"), "logged-out watching still allowed");
+  assert.equal(P.effectiveSettings(16, {}, "AU").accountsAllowed, true);
+  assert.equal(P.effectiveSettings(14, {}, "default").accountsAllowed, true);
+  assert.equal(P.effectiveSettings(14, {}).accountsAllowed, true);
+  assert.equal(P.effectiveSettings(12, {}).accountsAllowed, false);
+});
+
+test("region guess from locale", () => {
+  assert.equal(P.guessRegion("en-AU"), "AU");
+  assert.equal(P.guessRegion("en-US"), "default");
+  assert.equal(P.guessRegion(undefined), "default");
+});

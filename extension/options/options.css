@@ -145,3 +145,6 @@ main{display:flex;flex-direction:column;gap:20px;min-width:0}
   .pill{display:none}
   .savebar{left:16px;right:16px;transform:none;gap:8px;white-space:normal}
 }
+
+.select{font:inherit;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:9px 12px;min-width:180px}
+.field .select{display:block;width:100%;margin-top:6px;font-weight:400}

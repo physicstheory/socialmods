@@ -5,6 +5,7 @@
   "description": "Age-based parental controls for TikTok, Snapchat and Meta apps",
   "scripts": {
     "test": "node --test tests/policy.test.js",
+    "build:userscript": "node userscript/build.mjs",
     "zip": "cd extension && zip -r ../safescroll.zip . -x '*.DS_Store'"
   }
 }

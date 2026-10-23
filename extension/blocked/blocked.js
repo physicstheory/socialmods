@@ -17,7 +17,7 @@ const REASONS = {
   hideFriendSuggestions: ["👥", "Friend suggestions are off", "Suggested accounts aren't available."]
 };
 const SAFE_HOSTS = /(^|\.)(tiktok\.com|instagram\.com|facebook\.com|threads\.(net|com)|snapchat\.com)$/;
-const p = new URLSearchParams(location.search);
+const p = new URLSearchParams(window.__safescrollParams || location.search);
 const [em, title, why] = REASONS[p.get("reason")] || ["🛡️", "This page is blocked", "It isn't available with your current rules."];
 document.getElementById("em").textContent = em;
 document.getElementById("title").textContent = title;

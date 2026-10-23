@@ -26,6 +26,8 @@
 
   function blockPage(reason) {
     const back = site.safeLanding ? new URL(site.safeLanding, location.href).href : "";
+    // Where extension pages can't be opened (the Safari userscript), show the blocked screen as an overlay.
+    if (globalThis.SafeScrollPlatform && SafeScrollPlatform.showBlocked) return SafeScrollPlatform.showBlocked(reason, siteId, back);
     const url = chrome.runtime.getURL("blocked/blocked.html") +
       "?reason=" + encodeURIComponent(reason) + "&site=" + encodeURIComponent(siteId) +
       (back ? "&back=" + encodeURIComponent(back) : "");

@@ -1,0 +1,12 @@
+# Fails if userscript/safescroll.user.js is out of date with extension/ (run `npm run build:userscript`).
+name: Userscript up to date
+on:
+  push:
+    paths: ["extension/**", "userscript/**"]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node userscript/build.mjs && node --check userscript/safescroll.user.js
+      - run: git diff --ignore-matching-lines='@version' --exit-code userscript/safescroll.user.js

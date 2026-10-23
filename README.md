@@ -9,7 +9,8 @@ It has three layers. Use all three for the best coverage:
 | 1. Browser extension | Web versions of every supported service (feed control, content filters, friend limits, time limits) | `extension/` |
 | 2. Network blocklist | Native phone, tablet and desktop apps (whole-platform blocking) | `network/` |
 | 3. Device lock-down | Stops the child removing the extension, using incognito or using another browser | `deploy/` |
-| 4. iPhone app | TikTok's mobile site inside an app, with the same filters and settings built in (**[install guide](INSTALL.md)**) | `ios/` |
+| 4. iPhone, no laptop (easiest) | Same filters and settings on TikTok's real website in Safari, via the free Userscripts app (**[install guide](SAFARI.md)**) | `userscript/` |
+| 5. iPhone app | TikTok's mobile site inside an app, with the same filters and settings built in (**[install guide](INSTALL.md)**) | `ios/` |
 
 ## What the rules do at each age
 
@@ -151,6 +152,7 @@ extension/blocked/             Page shown when something is blocked
 extension/ui/                  Shared styles and icons
 scripts/screenshots.mjs        Regenerates docs/screenshots with Playwright
 scripts/ios-web-check.mjs      Tests the iPhone app's web layer (shim, home, filters, login blocking)
+userscript/                    Safari version: build.mjs makes safescroll.user.js from extension/, test.mjs tests it
 ios/                           iPhone app (see ios/README.md)
 network/blocklist-hosts.txt    DNS/hosts blocklist for native apps
 deploy/                        Browser lock-down policies

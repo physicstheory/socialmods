@@ -28,7 +28,32 @@ A personal iPhone app that opens TikTok's mobile website inside the app with the
 - **Stays logged in between launches**, like Safari.
 - **Camera, microphone and photos** work for uploading. iOS asks the first time.
 
-## What you need
+## Install from a Windows PC (no Mac needed)
+GitHub builds the app on one of its Macs every time the code changes. You then install it with **Sideloadly**, which signs it with your Apple ID.
+
+**One-time setup on the PC**
+1. **Install iTunes and iCloud** from Apple's website. Use the downloads from apple.com, *not* the Microsoft Store versions. Sideloadly needs them to talk to the iPhone.
+2. **Install Sideloadly** from sideloadly.io.
+3. **Set up the iPhone:** plug it in with a USB-C cable, unlock it, and tap **Trust This Computer**.
+
+**Each install**
+1. **Download the app file:**
+   1. Open GitHub → this repository → **Actions** → **Build iPhone app** → the latest run with a green tick.
+   2. Under **Artifacts**, download **SafeScroll-ipa**.
+   3. Unzip it to get `SafeScroll.ipa`.
+2. **Install with Sideloadly:**
+   1. Open Sideloadly and drag `SafeScroll.ipa` onto it.
+   2. Pick your iPhone, enter your Apple ID email, and click **Start**. Sign in with your Apple ID password and the 2-factor code when asked.
+3. **On the iPhone:**
+   1. Go to Settings → General → **VPN & Device Management**, tap your Apple ID, then tap **Trust**.
+   2. The first time, also turn on Settings → Privacy & Security → **Developer Mode** and restart.
+4. **Open SafeScroll.**
+
+**Every 7 days** (free Apple ID): the app stops opening. Plug in the iPhone and click **Start** in Sideloadly again. Your settings and login are kept. Sideloadly can also refresh it automatically over Wi-Fi while the PC is on. A paid Apple Developer account (US$99 a year) makes each install last a year.
+
+## Building on a Mac instead
+
+### What you need
 | | |
 |---|---|
 | A Mac with **Xcode 15 or newer** | Free from the Mac App Store |
@@ -36,7 +61,7 @@ A personal iPhone app that opens TikTok's mobile website inside the app with the
 | An **Apple ID** | Free works. Apps signed with a free account expire after **7 days** and need re-installing from Xcode. A paid Apple Developer account (US$99 a year) makes it last a year. |
 | An **iPhone** on iOS 16 or newer, plus a cable | Turn on **Developer Mode**: Settings → Privacy & Security → Developer Mode (appears after the first install attempt) |
 
-## Build and install
+### Build and install
 ```bash
 cd ios
 xcodegen            # creates SafeScrollTok.xcodeproj from project.yml

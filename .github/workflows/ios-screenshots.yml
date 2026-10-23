@@ -39,6 +39,10 @@ jobs:
           phones=[x for r,l in d.items() if 'iOS' in r for x in l if x['name'].startswith('iPhone')]
           pro=[x for x in phones if 'Pro' in x['name'] and 'Max' not in x['name']]
           print((pro or phones)[-1]['udid'])")
+          # The simulator follows the Mac's clock. Use Melbourne time so bedtime / For You hours
+          # reflect an Australian day rather than UTC.
+          sudo systemsetup -settimezone Australia/Melbourne >/dev/null || true
+          TZ=Australia/Melbourne date
           xcrun simctl boot "$UDID" || true
           xcrun simctl bootstatus "$UDID" -b
           xcrun simctl status_bar "$UDID" override --time 9:41 --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4 || true

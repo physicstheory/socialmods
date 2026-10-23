@@ -11,6 +11,7 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
     TARGETED_DEVICE_FAMILY: "1,2"
     DEVELOPMENT_TEAM: ""                    # set in Xcode → Signing & Capabilities
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
 targets:
   SafeScrollTok:
     type: application
@@ -31,6 +32,7 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIRequiresFullScreen: true
+        ITSAppUsesNonExemptEncryption: false
         NSCameraUsageDescription: TikTok uses the camera when you record a video.
         NSMicrophoneUsageDescription: TikTok uses the microphone when you record a video.
         NSPhotoLibraryUsageDescription: TikTok uses your photo library when you upload a video.

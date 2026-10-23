@@ -159,7 +159,20 @@ struct MainView: View {
                     }
             }
         }
-        .onAppear { if !browser.hasLoaded { browser.load(model.startURL) } }
+        .onAppear {
+            // Launch arguments (only settable from Xcode or the simulator), used to take screenshots:
+            //   --open <url>      open this page instead of the usual start page
+            //   --show-settings   open the settings sheet
+            let args = ProcessInfo.processInfo.arguments
+            if !browser.hasLoaded {
+                if let i = args.firstIndex(of: "--open"), i + 1 < args.count, let url = URL(string: args[i + 1]) {
+                    browser.load(url)
+                } else {
+                    browser.load(model.startURL)
+                }
+            }
+            if args.contains("--show-settings") { model.showSettings = true }
+        }
     }
 }
 

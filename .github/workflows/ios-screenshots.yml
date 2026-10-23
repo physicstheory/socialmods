@@ -1,0 +1,92 @@
+# Runs the real SafeScroll iPhone app in Apple's iPhone Simulator on a GitHub Mac,
+# with live TikTok inside it, and takes screenshots (plus TikTok in plain Safari
+# for comparison). Results: releases/tag/app-screenshots
+name: iPhone app screenshots
+
+on:
+  push:
+    paths: [".github/workflows/ios-screenshots.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  screenshots:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build for the simulator
+        working-directory: ios
+        run: |
+          brew install xcodegen
+          xcodegen
+          set -o pipefail
+          xcodebuild build -project SafeScrollTok.xcodeproj -scheme SafeScrollTok -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO | tail -5
+
+      - name: Run scenarios and take screenshots
+        working-directory: ios
+        run: |
+          set -x
+          APP=build/Build/Products/Debug-iphonesimulator/SafeScrollTok.app
+          BID=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist")
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['devices']
+          phones=[x for r,l in d.items() if 'iOS' in r for x in l if x['name'].startswith('iPhone')]
+          pro=[x for x in phones if 'Pro' in x['name'] and 'Max' not in x['name']]
+          print((pro or phones)[-1]['udid'])")
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time 9:41 --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4 || true
+          xcrun simctl install "$UDID" "$APP"
+          mkdir -p shots
+          shot() { sleep "$2"; xcrun simctl io "$UDID" screenshot "shots/$1.png"; }
+          run()  { xcrun simctl terminate "$UDID" "$BID" 2>/dev/null || true; xcrun simctl launch "$UDID" "$BID" "$@"; }
+          store() {
+            HEX=$(printf '%s' "$1" | xxd -p | tr -d '\n')
+            xcrun simctl spawn "$UDID" defaults write "$BID" safescroll.storage.v1 -data "$HEX"
+          }
+          welcome() { xcrun simctl spawn "$UDID" defaults write "$BID" welcomeDone -bool "$1"; }
+          PIN='"pinSalt":"s","pinHash":"1f884ca61b18b4dcde9cc304095322b1c5b15422400c4796cf0bbadbea5f00aa"'
+          LATER=$(( ($(date +%s) + 7200) * 1000 ))
+          CREATORS='"friendAllowlist":["nasa","sciencesam","bakewithmia"]'
+
+          # 1. First launch: parent setup
+          run; shot 01-first-launch-setup 10
+
+          # 2. Welcome (17, accounts allowed)
+          store "{$PIN,\"age\":17,\"region\":\"default\",\"overrides\":{\"disableForYou\":false,$CREATORS}}"
+          welcome NO; run; shot 02-welcome 6
+
+          # 3. TikTok For You inside SafeScroll (17, For You on with limits)
+          welcome YES; run; shot 03-app-tiktok-foryou 25
+
+          # 4. The same page in plain Safari, for comparison
+          xcrun simctl terminate "$UDID" "$BID" || true
+          xcrun simctl openurl "$UDID" "https://www.tiktok.com/foryou"; shot 04-safari-tiktok-foryou 25
+          xcrun simctl terminate "$UDID" com.apple.mobilesafari || true
+
+          # 5. Settings sheet (cog)
+          store "{$PIN,\"age\":17,\"region\":\"default\",\"unlockedUntil\":$LATER,\"overrides\":{\"disableForYou\":false,$CREATORS}}"
+          run --show-settings; shot 05-app-settings 10
+
+          # 6. 14 in Australia: no account, approved creators, login blocked
+          store "{$PIN,\"age\":14,\"region\":\"AU\",\"overrides\":{$CREATORS}}"
+          run; shot 06-app-home-14-australia 10
+          run --open "https://www.tiktok.com/@nasa"; shot 07-app-approved-creator 25
+          run --open "https://www.tiktok.com/login"; shot 08-app-login-blocked-14-australia 12
+          ls -la shots
+
+      - name: Publish screenshots
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: ios
+        run: |
+          gh release delete app-screenshots --cleanup-tag --yes || true
+          gh release create app-screenshots shots/*.png --target "$GITHUB_SHA" --latest=false --prerelease \
+            --title "SafeScroll iPhone app screenshots" --notes "Real app in Apple's iPhone Simulator with live TikTok."

@@ -49,6 +49,9 @@ final class AppModel: ObservableObject {
     }
 }
 
+/// Setup and the welcome screen only ever show once. After that the app opens
+/// straight into TikTok with the saved settings (kept in UserDefaults and the
+/// web view's own cookie store, so they survive closing the app and restarts).
 struct RootView: View {
     @EnvironmentObject var model: AppModel
     var body: some View {
@@ -114,10 +117,22 @@ struct MainView: View {
                 bar("chevron.left", "Back") { browser.webView.goBack() }.disabled(!browser.canGoBack)
                 bar("house", "Home") { browser.goHome() }
                 bar("arrow.clockwise", "Reload") { browser.webView.reload() }
-                bar("checkmark.shield", "Settings") { model.showSettings = true }
             }
             .padding(.vertical, 6)
             .background(.bar)
+        }
+        // Small cog for parent settings, top-right on every screen.
+        .overlay(alignment: .topTrailing) {
+            Button { model.showSettings = true } label: {
+                Image(systemName: "gearshape.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 32, height: 32)
+                    .background(.ultraThinMaterial, in: Circle())
+            }
+            .padding(.top, 4)
+            .padding(.trailing, 12)
+            .accessibilityLabel("Settings")
         }
         .overlay(alignment: .top) {
             if let toast = model.toast {

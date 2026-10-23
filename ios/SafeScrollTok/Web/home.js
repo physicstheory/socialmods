@@ -29,7 +29,7 @@
     const list = cfg.friendAllowlist;
     document.getElementById("creators").innerHTML = list.length
       ? list.map(u => `<a class="creator" href="https://www.tiktok.com/@${encodeURIComponent(u)}"><i>${esc(u[0].toUpperCase())}</i><span>@${esc(u)}</span></a>`).join("")
-      : `<div class="empty" style="grid-column:1/-1">No creators yet. Add usernames under Friends in Settings (the shield button).</div>`;
+      : `<div class="empty" style="grid-column:1/-1">No creators yet. Add usernames under Friends in Settings (the cog, top right).</div>`;
 
     document.getElementById("note").innerHTML = cfg.accountsAllowed ? "" :
       `${icon("lock")}<span>Where you live, TikTok accounts start at ${cfg.minAccountAge}, so log in and sign up are off. Public videos still play.</span>`;

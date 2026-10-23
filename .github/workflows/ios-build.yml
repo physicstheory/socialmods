@@ -1,0 +1,57 @@
+# Builds an unsigned SafeScroll.ipa on a GitHub-hosted Mac.
+# Install it from Windows with Sideloadly, which signs it with your Apple ID (see ios/README.md).
+name: Build iPhone app
+
+on:
+  push:
+    paths: ["ios/**", "extension/**", ".github/workflows/ios-build.yml"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: ios
+        run: xcodegen
+
+      - name: Build (unsigned)
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project SafeScrollTok.xcodeproj \
+            -scheme SafeScrollTok \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            | tee build.log | grep -E "error:|warning: .*SafeScrollTok|BUILD (SUCCEEDED|FAILED)" || true
+          grep -q "BUILD SUCCEEDED" build.log
+
+      - name: Package .ipa
+        working-directory: ios
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/SafeScrollTok.app Payload/
+          zip -qry SafeScroll.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SafeScroll-ipa
+          path: ios/SafeScroll.ipa
+          retention-days: 30
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: ios/build.log

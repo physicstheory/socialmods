@@ -10,10 +10,12 @@ const userData = fs.mkdtempSync(path.join(process.env.TMPDIR || "/tmp", "ssp-"))
 let failures = 0;
 const check = (ok, m) => { console.log((ok ? "PASS " : "FAIL ") + m); if (!ok) failures++; };
 
+// Run as if it's midday, so bedtime / For You hours don't depend on when the tests run.
+const daytimeTZ = (() => { let off = 12 - new Date().getUTCHours(); if (off > 14) off -= 24; if (off < -12) off += 24; return off >= 0 ? `Etc/GMT-${off}` : `Etc/GMT+${-off}`; })();
 const app = await electron.launch({
   executablePath: path.join(here, "node_modules/electron/dist/electron"),
   args: [here, `--user-data-dir=${userData}`, "--no-sandbox"],
-  env: { ...process.env, SAFESCROLL_TEST_ROUTES: path.join(here, "test-routes.js") }
+  env: { ...process.env, TZ: daytimeTZ, SAFESCROLL_TEST_ROUTES: path.join(here, "test-routes.js") }
 });
 const win = await app.firstWindow();
 const errors = [];

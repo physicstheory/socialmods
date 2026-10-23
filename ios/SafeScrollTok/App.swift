@@ -32,6 +32,11 @@ final class AppModel: ObservableObject {
     var minAccountAge: Int { (config["minAccountAge"] as? NSNumber)?.intValue ?? 13 }
 
     private init() {
+        // Simulator/Xcode only (screenshots): --welcome-done YES|NO
+        let args = ProcessInfo.processInfo.arguments
+        if let i = args.firstIndex(of: "--welcome-done"), i + 1 < args.count {
+            UserDefaults.standard.set(args[i + 1] == "YES", forKey: "welcomeDone")
+        }
         setupDone = SettingsStore.shared.data["pinHash"] != nil
         welcomeDone = UserDefaults.standard.bool(forKey: "welcomeDone")
         refresh()

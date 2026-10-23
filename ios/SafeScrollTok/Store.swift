@@ -62,6 +62,14 @@ final class SettingsStore {
            let obj = try? JSONSerialization.jsonObject(with: raw) as? [String: Any] {
             data = obj
         }
+        // Simulator/Xcode only (screenshots): --seed-store <base64 JSON> replaces the saved settings.
+        let args = ProcessInfo.processInfo.arguments
+        if let i = args.firstIndex(of: "--seed-store"), i + 1 < args.count,
+           let raw = Data(base64Encoded: args[i + 1]),
+           let obj = try? JSONSerialization.jsonObject(with: raw) as? [String: Any] {
+            data = obj
+            persist()
+        }
     }
 
     func get(_ keys: Any?) -> [String: Any] {

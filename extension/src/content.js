@@ -220,6 +220,22 @@
     await chrome.storage.local.set({ fypUsage: { [fyp.date]: { minutes: fyp.minutes, posts: fyp.posts } } });
   }
 
+  // Close "open the app" pop-ups (press "Not now") and hide buttons that open the app or sell coins.
+  function handleNags() {
+    const n = site.nags;
+    if (!n) return;
+    for (const el of document.querySelectorAll("button,a,[role='button'],[role='link']")) {
+      const text = (el.innerText || el.textContent || "").trim();
+      if (!text || text.length > 40) continue;
+      if (n.hide.some(re => re.test(text))) { el.classList.add("safescroll-removed"); continue; }
+      if (!el.dataset.safescrollNag && n.dismiss.some(re => re.test(text))) {
+        for (let box = el.parentElement, i = 0; box && i < 10; box = box.parentElement, i++) {
+          if (n.dismissWithin.test(box.innerText || "")) { el.dataset.safescrollNag = "1"; el.click(); break; }
+        }
+      }
+    }
+  }
+
   let scheduled = false;
   function schedule() {
     if (scheduled) return;
@@ -229,6 +245,7 @@
       checkRoute();
       scanPosts(document.body || document.documentElement);
       lockFollowButtons();
+      handleNags();
     });
   }
 

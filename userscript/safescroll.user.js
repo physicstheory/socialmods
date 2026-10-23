@@ -519,7 +519,13 @@ if (!data.pinHash) {
       fypExtraHide: ['a[href^="/shop"]', '[data-e2e="nav-shop"]', '[data-e2e*="live-card"]', '[data-e2e="video-ad-tag"]', 'a[href*="/live"]'],
       posts: ['[data-e2e="recommend-list-item-container"]', '[data-e2e="user-post-item"]', 'article', '[data-e2e="comment-level-1"]', '[data-e2e="search_top-item"]'],
       profile: p => (p.match(/^\/@([^/?#]+)/) || [])[1],
-      followText: [/^follow$/i, /^follow back$/i, /^add friend$/i, /^message$/i]
+      followText: [/^follow$/i, /^follow back$/i, /^add friend$/i, /^message$/i],
+      // "Open the app" nags: dismissed or hidden so nothing leads out to the TikTok app or to buying coins.
+      nags: {
+        dismiss: [/^not now$/i, /^maybe later$/i],
+        dismissWithin: /full app experience|open tiktok|get the app|download the app/i,
+        hide: [/^open app$/i, /^open tiktok$/i, /^get coins$/i, /^use tiktok app$/i, /^get tiktok app$/i]
+      }
     },
     snapchat: {
       hosts: [/(^|\.)snapchat\.com$/],
@@ -883,6 +889,22 @@ if (!data.pinHash) {
     await chrome.storage.local.set({ fypUsage: { [fyp.date]: { minutes: fyp.minutes, posts: fyp.posts } } });
   }
 
+  // Close "open the app" pop-ups (press "Not now") and hide buttons that open the app or sell coins.
+  function handleNags() {
+    const n = site.nags;
+    if (!n) return;
+    for (const el of document.querySelectorAll("button,a,[role='button'],[role='link']")) {
+      const text = (el.innerText || el.textContent || "").trim();
+      if (!text || text.length > 40) continue;
+      if (n.hide.some(re => re.test(text))) { el.classList.add("safescroll-removed"); continue; }
+      if (!el.dataset.safescrollNag && n.dismiss.some(re => re.test(text))) {
+        for (let box = el.parentElement, i = 0; box && i < 10; box = box.parentElement, i++) {
+          if (n.dismissWithin.test(box.innerText || "")) { el.dataset.safescrollNag = "1"; el.click(); break; }
+        }
+      }
+    }
+  }
+
   let scheduled = false;
   function schedule() {
     if (scheduled) return;
@@ -892,6 +914,7 @@ if (!data.pinHash) {
       checkRoute();
       scanPosts(document.body || document.documentElement);
       lockFollowButtons();
+      handleNags();
     });
   }
 

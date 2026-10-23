@@ -23,8 +23,10 @@ header{padding:14px;font-weight:700;text-align:center;border-bottom:1px solid #3
 <header>Stand-in page (not real TikTok): ${title}</header>${extra}
 ${posts.map(p => `<div data-e2e="recommend-list-item-container"><img alt="">${p}</div>`).join("")}</body></html>`;
 
+// Run as if it's midday, so bedtime / For You hours don't depend on when the tests run.
+const daytimeTZ = (() => { let off = 12 - new Date().getUTCHours(); if (off > 14) off -= 24; if (off < -12) off += 24; return off >= 0 ? `Etc/GMT-${off}` : `Etc/GMT+${-off}`; })();
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+const ctx = await browser.newContext({ timezoneId: daytimeTZ, viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 await ctx.exposeBinding("__gmGet", (_s, k, d) => (k in gm ? gm[k] : d));
 await ctx.exposeBinding("__gmSet", (_s, k, v) => { gm[k] = v; });
 await ctx.addInitScript(src => {
@@ -35,7 +37,10 @@ await ctx.addInitScript(src => {
 await ctx.route("https://www.tiktok.com/**", r => {
   const u = new URL(r.request().url());
   const posts = ["@bakewithmia · 3 ingredient cookies 🍪 #baking", "@stuntkid · trying the #blackoutchallenge 😵", "@sciencesam · elephant toothpaste #stem"];
-  const login = `<a data-e2e="top-login-button" href="/login" style="display:block;margin:12px;padding:10px;background:#fe2c55;color:#fff;text-align:center;border-radius:8px">Log in</a>`;
+  const nag = `<a href="tiktok://open" class="openapp">Open app</a>
+    <div id="nag" style="position:fixed;inset:0;background:rgba(0,0,0,.6)"><div><h2>Get the full app experience</h2>
+    <a href="tiktok://open">Open TikTok</a><button onclick="document.getElementById('nag').remove()">Not now</button></div></div>`;
+  const login = nag + `<a data-e2e="top-login-button" href="/login" style="display:block;margin:12px;padding:10px;background:#fe2c55;color:#fff;text-align:center;border-radius:8px">Log in</a>`;
   r.fulfill({ contentType: "text/html; charset=utf-8", body: stub(u.pathname, posts, login) });
 });
 const store = () => JSON.parse(gm["safescroll.storage.v1"] || "{}");
@@ -86,6 +91,8 @@ const visible = await page.$$eval('[data-e2e="recommend-list-item-container"]', 
 check(visible.length === 2 && !visible.some(t => t.includes("blackout")), "harmful post removed, safe posts stay");
 check(await page.$eval('[data-e2e="top-login-button"]', e => getComputedStyle(e).display === "none"), "Log in button hidden under 16 in Australia");
 check(await page.evaluate(() => !!document.getElementById("safescroll-cog")), "settings cog shown");
+check(await page.evaluate(() => !document.getElementById("nag")), "'Get the full app experience' pop-up dismissed (Not now)");
+check(await page.$eval(".openapp", e => getComputedStyle(e).display === "none"), "'Open app' button hidden");
 if (shots) await page.screenshot({ path: path.join(shotDir, "3-feed-filtered.png") });
 
 // 4. Login page: blocked overlay.

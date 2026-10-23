@@ -50,39 +50,37 @@ jobs:
           mkdir -p shots
           shot() { sleep "$2"; xcrun simctl io "$UDID" screenshot "shots/$1.png"; }
           run()  { xcrun simctl terminate "$UDID" "$BID" 2>/dev/null || true; xcrun simctl launch "$UDID" "$BID" "$@"; }
-          store() {
-            HEX=$(printf '%s' "$1" | xxd -p | tr -d '\n')
-            xcrun simctl spawn "$UDID" defaults write "$BID" safescroll.storage.v1 -data "$HEX"
-          }
-          welcome() { xcrun simctl spawn "$UDID" defaults write "$BID" welcomeDone -bool "$1"; }
+          # Settings are passed in at launch (--seed-store), so each scenario starts from exactly these values.
+          seed() { printf '%s' "$1" | base64 | tr -d '\n'; }
           PIN='"pinSalt":"s","pinHash":"1f884ca61b18b4dcde9cc304095322b1c5b15422400c4796cf0bbadbea5f00aa"'
           LATER=$(( ($(date +%s) + 7200) * 1000 ))
           CREATORS='"friendAllowlist":["nasa","sciencesam","bakewithmia"]'
+          S17=$(seed "{$PIN,\"age\":17,\"region\":\"default\",\"overrides\":{\"disableForYou\":false,$CREATORS}}")
+          S17U=$(seed "{$PIN,\"age\":17,\"region\":\"default\",\"unlockedUntil\":$LATER,\"overrides\":{\"disableForYou\":false,$CREATORS}}")
+          S14AU=$(seed "{$PIN,\"age\":14,\"region\":\"AU\",\"overrides\":{$CREATORS}}")
 
           # 1. First launch: parent setup
-          run; shot 01-first-launch-setup 10
+          run --seed-store "$(seed '{}')" --welcome-done NO; shot 01-first-launch-setup 10
 
           # 2. Welcome (17, accounts allowed)
-          store "{$PIN,\"age\":17,\"region\":\"default\",\"overrides\":{\"disableForYou\":false,$CREATORS}}"
-          welcome NO; run; shot 02-welcome 6
+          run --seed-store "$S17" --welcome-done NO; shot 02-welcome 6
 
           # 3. TikTok For You inside SafeScroll (17, For You on with limits)
-          welcome YES; run; shot 03-app-tiktok-foryou 25
+          run --seed-store "$S17" --welcome-done YES; shot 03-app-tiktok-foryou 25
 
           # 4. The same page in plain Safari, for comparison
           xcrun simctl terminate "$UDID" "$BID" || true
           xcrun simctl openurl "$UDID" "https://www.tiktok.com/foryou"; shot 04-safari-tiktok-foryou 25
           xcrun simctl terminate "$UDID" com.apple.mobilesafari || true
 
-          # 5. Settings sheet (cog)
-          store "{$PIN,\"age\":17,\"region\":\"default\",\"unlockedUntil\":$LATER,\"overrides\":{\"disableForYou\":false,$CREATORS}}"
-          run --show-settings; shot 05-app-settings 10
+          # 5. Settings sheet (cog), unlocked
+          run --seed-store "$S17U" --welcome-done YES --show-settings; shot 05-app-settings 10
 
           # 6. 14 in Australia: no account, approved creators, login blocked
-          store "{$PIN,\"age\":14,\"region\":\"AU\",\"overrides\":{$CREATORS}}"
-          run; shot 06-app-home-14-australia 10
-          run --open "https://www.tiktok.com/@nasa"; shot 07-app-approved-creator 25
-          run --open "https://www.tiktok.com/login"; shot 08-app-login-blocked-14-australia 12
+          run --seed-store "$S14AU" --welcome-done YES; shot 06-app-home-14-australia 10
+          run --seed-store "$S14AU" --welcome-done YES --open "https://www.tiktok.com/@nasa"; shot 07-app-approved-creator 25
+          run --seed-store "$S14AU" --welcome-done YES --open "https://www.tiktok.com/foryou"; shot 08-app-foryou-off-14-australia 15
+          run --seed-store "$S14AU" --welcome-done YES --open "https://www.tiktok.com/login"; shot 09-app-login-blocked-14-australia 12
           ls -la shots
 
       - name: Publish screenshots

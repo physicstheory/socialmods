@@ -28,7 +28,13 @@
       fypExtraHide: ['a[href^="/shop"]', '[data-e2e="nav-shop"]', '[data-e2e*="live-card"]', '[data-e2e="video-ad-tag"]', 'a[href*="/live"]'],
       posts: ['[data-e2e="recommend-list-item-container"]', '[data-e2e="user-post-item"]', 'article', '[data-e2e="comment-level-1"]', '[data-e2e="search_top-item"]'],
       profile: p => (p.match(/^\/@([^/?#]+)/) || [])[1],
-      followText: [/^follow$/i, /^follow back$/i, /^add friend$/i, /^message$/i]
+      followText: [/^follow$/i, /^follow back$/i, /^add friend$/i, /^message$/i],
+      // "Open the app" nags: dismissed or hidden so nothing leads out to the TikTok app or to buying coins.
+      nags: {
+        dismiss: [/^not now$/i, /^maybe later$/i],
+        dismissWithin: /full app experience|open tiktok|get the app|download the app/i,
+        hide: [/^open app$/i, /^open tiktok$/i, /^get coins$/i, /^use tiktok app$/i, /^get tiktok app$/i]
+      }
     },
     snapchat: {
       hosts: [/(^|\.)snapchat\.com$/],

@@ -29,6 +29,8 @@ A personal iPhone app that opens TikTok's mobile website inside the app with the
 - **Camera, microphone and photos** work for uploading. iOS asks the first time.
 
 ## Install from a Windows PC (no Mac needed)
+**Quick version: [INSTALL.md](../INSTALL.md).** The installer script downloads the newest build from the fixed link `releases/download/latest/SafeScroll.ipa` and opens Sideloadly. The steps below do the same by hand.
+
 GitHub builds the app on one of its Macs every time the code changes. You then install it with **Sideloadly**, which signs it with your Apple ID.
 
 **One-time setup on the PC**

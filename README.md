@@ -9,7 +9,7 @@ It has three layers. Use all three for the best coverage:
 | 1. Browser extension | Web versions of every supported service (feed control, content filters, friend limits, time limits) | `extension/` |
 | 2. Network blocklist | Native phone, tablet and desktop apps (whole-platform blocking) | `network/` |
 | 3. Device lock-down | Stops the child removing the extension, using incognito or using another browser | `deploy/` |
-| 4. iPhone app | TikTok's mobile site inside an app, with the same filters and settings built in ([setup guide](ios/README.md)) | `ios/` |
+| 4. iPhone app | TikTok's mobile site inside an app, with the same filters and settings built in (**[install guide](INSTALL.md)**) | `ios/` |
 
 ## What the rules do at each age
 

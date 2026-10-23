@@ -7,6 +7,9 @@ on:
     paths: ["ios/**", "extension/**", ".github/workflows/ios-build.yml", "!**/*.md"]
   workflow_dispatch:
 
+permissions:
+  contents: write   # to publish SafeScroll.ipa at a fixed download link
+
 jobs:
   build:
     runs-on: macos-15
@@ -48,6 +51,18 @@ jobs:
           name: SafeScroll-ipa
           path: ios/SafeScroll.ipa
           retention-days: 30
+
+      # Fixed link that always has the newest build:
+      # https://github.com/<owner>/<repo>/releases/download/latest/SafeScroll.ipa
+      - name: Publish to the "latest" download link
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: ios
+        run: |
+          gh release delete latest --cleanup-tag --yes || true
+          gh release create latest SafeScroll.ipa --target "$GITHUB_SHA" --latest \
+            --title "SafeScroll iPhone app" \
+            --notes "Newest build. Install with windows/Install-SafeScroll.cmd (see INSTALL.md)."
 
       - name: Upload build log on failure
         if: failure()

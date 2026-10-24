@@ -53,6 +53,14 @@ enum Gate {
     }
 }
 
+/// Snapchat's web app (chat, snaps, calls, stories) only opens in desktop browsers, so its pages are
+/// asked for as Safari on a Mac. Web/snapchat-web.js then lays them out at the phone's width.
+enum SnapchatWeb {
+    static let hosts = ["web.snapchat.com", "accounts.snapchat.com"]
+    static let userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15"
+    static func wants(_ url: URL) -> Bool { Gate.matches(url.host?.lowercased() ?? "", hosts) }
+}
+
 /// Native alert / confirm / prompt for web pages, plus camera and microphone access.
 class WebUIDelegate: NSObject, WKUIDelegate {
     func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String,
@@ -111,6 +119,8 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
     private(set) var hasLoaded = false
     /// The page SafeScroll itself just asked for, so it's let through even from a TikTok page.
     private var requestedByApp: URL?
+    /// Recent switches between the iPhone and desktop browser identity, to stop a site bouncing between them.
+    private var identitySwitches: [Date] = []
     private var observation: NSKeyValueObservation?
 
     override init() {
@@ -138,6 +148,8 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
         let scripts = config.userContentController
         scripts.addScriptMessageHandler(Bridge.shared, contentWorld: .defaultClient, name: "safescroll")
         scripts.addScriptMessageHandler(Bridge.shared, contentWorld: .page, name: "safescroll")
+        scripts.addUserScript(WKUserScript(source: Resources.appFile("snapchat-web.js"), injectionTime: .atDocumentStart,
+                                           forMainFrameOnly: true, in: .page))
         scripts.addUserScript(WKUserScript(source: Resources.contentScript, injectionTime: .atDocumentStart,
                                            forMainFrameOnly: true, in: .defaultClient))
         return config
@@ -180,6 +192,7 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
         if byApp { requestedByApp = nil }
         switch Gate.check(url, from: webView.url, byApp: byApp, accountsAllowed: AppModel.shared.accountsAllowed) {
         case .allow:
+            if webView === self.webView && switchIdentityIfNeeded(for: action, byApp: byApp) { return decisionHandler(.cancel) }
             decisionHandler(.allow)
         case .blockAccounts:
             decisionHandler(.cancel)
@@ -188,6 +201,20 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
             decisionHandler(.cancel)
             AppModel.shared.flash(message)
         }
+    }
+
+    /// Snapchat's web app gets the desktop browser identity; everything else the iPhone one.
+    /// Changing it means asking for the page again, which only works for plain page loads (not form posts).
+    private func switchIdentityIfNeeded(for action: WKNavigationAction, byApp: Bool) -> Bool {
+        guard let url = action.request.url, (action.request.httpMethod ?? "GET") == "GET" else { return false }
+        let wantDesktop = SnapchatWeb.wants(url)
+        guard wantDesktop != (webView.customUserAgent == SnapchatWeb.userAgent) else { return false }
+        identitySwitches = identitySwitches.filter { $0.timeIntervalSinceNow > -8 } + [Date()]
+        if identitySwitches.count > 4 { return false } // the site keeps bouncing; leave it as it is
+        webView.customUserAgent = wantDesktop ? SnapchatWeb.userAgent : nil
+        if byApp { requestedByApp = url }
+        webView.load(action.request)
+        return true
     }
 
     // MARK: New windows open inside the app

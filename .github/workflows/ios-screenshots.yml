@@ -106,6 +106,9 @@ jobs:
           run --seed-store "$S17" --welcome-done YES; shot 20-app-tiktok-foryou-dark-mode 25
           run --seed-store "$S17" --welcome-done YES --open "https://www.snapchat.com/spotlight"; shot 21-app-snapchat-spotlight-dark-mode 20
           xcrun simctl ui "$UDID" appearance light || true
+
+          # 10. Snapchat's full web app (chat and snaps) at 16, laid out for the phone (signed out: its log-in page)
+          run --seed-store "$S16AU" --welcome-done YES --open "https://web.snapchat.com/"; shot 22-app-snapchat-web-16 25
           ls -la shots
 
       - name: Publish screenshots

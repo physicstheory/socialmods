@@ -36,8 +36,10 @@ final class AppModel: ObservableObject {
     }
     var minAccountAge: Int { (config["minAccountAge"] as? NSNumber)?.intValue ?? 13 }
     var snapchatBlocked: Bool { (config["blockedPlatforms"] as? [String] ?? []).contains("snapchat") }
-    /// Where "Snapchat" in SafeScroll opens: Spotlight when For You is on, otherwise Snapchat's home page.
+    /// Where "Snapchat" in SafeScroll opens: Snapchat's full web app (chat and snaps) when chat is allowed,
+    /// otherwise Spotlight when For You is on, otherwise Snapchat's home page.
     var snapchatURL: URL {
+        if accountsAllowed && config["disableDMs"] as? Bool != true { return URL(string: "https://web.snapchat.com/")! }
         let forYou = config["forYou"] as? [String: Any]
         return URL(string: forYou?["enabled"] as? Bool == true ? "https://www.snapchat.com/spotlight" : "https://www.snapchat.com/")!
     }

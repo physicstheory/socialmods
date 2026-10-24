@@ -103,6 +103,19 @@ check(true, "home updates live when settings change");
 check(await home.$$eval("#tiktokAccount a, #snapAccount a", as => as.map(a => a.textContent + " " + new URL(a.href).host).join("|")) ===
   "Sign in www.tiktok.com|Create an account www.tiktok.com|Sign in accounts.snapchat.com|Create an account accounts.snapchat.com",
   "sign in and create-account buttons for TikTok and Snapchat once accounts are allowed");
+check(await home.$eval("#snapTiles a.tile", a => a.href) === "https://web.snapchat.com/",
+  "Open Snapchat goes to Snapchat's full web app once chat is allowed");
+
+// Snapchat's web app: reads as a Mac but is laid out at the phone's width.
+await ctx.route("https://web.snapchat.com/**", r => r.fulfill({ contentType: "text/html",
+  body: `<!doctype html><html><head><meta name="viewport" content="width=1200"></head><body><div id="app">Chats</div></body></html>` }));
+const snapWeb = track(await ctx.newPage());
+await snapWeb.addInitScript({ path: path.join(appRoot, "snapchat-web.js") });
+await snapWeb.goto("https://web.snapchat.com/");
+check(await snapWeb.evaluate(() => navigator.platform === "MacIntel" && navigator.maxTouchPoints === 0), "Snapchat web app sees a desktop browser");
+check(await snapWeb.evaluate(() => [...document.querySelectorAll('meta[name="viewport"]')].map(m => m.content).join("|")) ===
+  "width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover", "Snapchat web app laid out at the phone's width");
+await snapWeb.close();
 if (shots) await home.screenshot({ path: path.join(shotsDir, "14b-app-home-accounts.png") });
 await settings.evaluate(() => chrome.storage.local.set({ region: "AU" }));
 

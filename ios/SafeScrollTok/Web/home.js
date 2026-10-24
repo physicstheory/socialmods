@@ -48,10 +48,12 @@
     const snapOn = !cfg.blockedPlatforms.includes("snapchat");
     document.getElementById("snap").hidden = !snapOn;
     if (snapOn) {
+      // With chat allowed, Snapchat opens its full web app (chats, snaps, stories), laid out for the phone.
+      const chat = cfg.accountsAllowed && !cfg.disableDMs;
       document.getElementById("snapTiles").innerHTML =
-        tile("https://www.snapchat.com/", "grid", "Open Snapchat", cfg.accountsAllowed ? "Snapchat's home page" : "Snapchat's home page and public profiles") +
-        tile("https://www.snapchat.com/spotlight", "play", "Spotlight", fy.enabled ? fySub : (fy.allowed ? "Turned off in Settings" : "Not available at this age"), fy.enabled) +
-        (cfg.accountsAllowed && !cfg.disableDMs ? tile("https://web.snapchat.com/", "users", "Chat", "Your Snapchat friends") : "");
+        (chat ? tile("https://web.snapchat.com/", "users", "Open Snapchat", "Chats, snaps and stories")
+              : tile("https://www.snapchat.com/", "grid", "Open Snapchat", cfg.accountsAllowed ? "Snapchat's home page · chat is off in Settings" : "Snapchat's home page and public profiles")) +
+        tile("https://www.snapchat.com/spotlight", "play", "Spotlight", fy.enabled ? fySub : (fy.allowed ? "Turned off in Settings" : "Not available at this age"), fy.enabled);
       document.getElementById("snapAccount").innerHTML = account("Snapchat");
       const snapList = cfg.snapAllowlist;
       document.getElementById("snapCreators").innerHTML = snapList.length

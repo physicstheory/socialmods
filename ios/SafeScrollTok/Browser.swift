@@ -9,6 +9,8 @@ enum Gate {
                               "snapchat.com", "snap.com"] // Snapchat's own rules (chat, log in, Snap Map) are applied by the filter scripts
     /// Sign-in providers TikTok offers ("Continue with Apple / Google / Facebook / X / LINE / Kakao").
     static let snapchatHosts = ["snapchat.com", "snap.com"]
+    /// Snapchat's log in / sign up site and its web chat, which need an account.
+    static let snapchatAccountHosts = ["accounts.snapchat.com", "web.snapchat.com"]
     static let loginHosts = ["appleid.apple.com", "accounts.google.com", "facebook.com", "twitter.com", "x.com",
                              "access.line.me", "kauth.kakao.com", "accounts.kakao.com"]
 
@@ -20,9 +22,10 @@ enum Gate {
 
     /// Snapchat only opens from SafeScroll itself (home screen or settings menu), or from
     /// a page that's already Snapchat — never by following a link out of TikTok.
-    static func check(_ url: URL, from current: URL?, accountsAllowed: Bool) -> Decision {
+    /// `byApp` is true when SafeScroll itself asked for this page (settings menu, start page).
+    static func check(_ url: URL, from current: URL?, byApp: Bool = false, accountsAllowed: Bool) -> Decision {
         let host = url.host?.lowercased() ?? ""
-        if matches(host, snapchatHosts) {
+        if matches(host, snapchatHosts) && !byApp {
             let fromHost = current?.host?.lowercased() ?? ""
             let fromApp = current == nil || current?.scheme == BundleSchemeHandler.scheme
             if !fromApp && !matches(fromHost, snapchatHosts) {
@@ -39,6 +42,7 @@ enum Gate {
         default: return .block("Opening other apps is turned off.") // tiktok://, snssdk…://, itms-apps://
         }
         let host = url.host?.lowercased() ?? ""
+        if matches(host, snapchatAccountHosts) && !accountsAllowed { return .blockAccounts }
         if matches(host, tiktokHosts) {
             let p = url.path.lowercased()
             if !accountsAllowed && (p.hasPrefix("/login") || p.hasPrefix("/signup")) { return .blockAccounts }
@@ -105,6 +109,8 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
     @Published var canGoBack = false
     @Published var popup: PopupItem?
     private(set) var hasLoaded = false
+    /// The page SafeScroll itself just asked for, so it's let through even from a TikTok page.
+    private var requestedByApp: URL?
     private var observation: NSKeyValueObservation?
 
     override init() {
@@ -139,14 +145,14 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
 
     func load(_ url: URL) {
         hasLoaded = true
+        requestedByApp = url
         webView.load(URLRequest(url: url))
     }
 
     func goHome() { load(Browser.homeURL) }
 
-    /// Opening Snapchat from SafeScroll (settings menu): through the home page's Snapchat section,
-    /// so the jump starts from a SafeScroll page.
-    func openSnapchat() { load(URL(string: "safescroll://app/_app/home.html#snap")!) }
+    /// Opening Snapchat from SafeScroll's settings menu: straight to Spotlight or Snapchat's home page.
+    func openSnapchat() { load(AppModel.shared.snapchatURL) }
 
     func signOut(then done: (() -> Void)? = nil) {
         let store = WKWebsiteDataStore.default()
@@ -158,8 +164,9 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
         }
     }
 
-    private func blockedPageURL(_ reason: String) -> URL {
-        URL(string: "safescroll://app/blocked/blocked.html?reason=\(reason)&site=tiktok")!
+    private func blockedPageURL(_ reason: String, for url: URL) -> URL {
+        let site = Gate.matches(url.host?.lowercased() ?? "", Gate.snapchatHosts) ? "snapchat" : "tiktok"
+        return URL(string: "safescroll://app/blocked/blocked.html?reason=\(reason)&site=\(site)")!
     }
 
     // MARK: Navigation
@@ -169,12 +176,14 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
         guard let url = action.request.url else { return decisionHandler(.cancel) }
         // Embedded frames (players, captcha, sign-in widgets) are left alone; only whole-page moves are checked.
         if action.targetFrame?.isMainFrame == false { return decisionHandler(.allow) }
-        switch Gate.check(url, from: webView.url, accountsAllowed: AppModel.shared.accountsAllowed) {
+        let byApp = webView === self.webView && url == requestedByApp
+        if byApp { requestedByApp = nil }
+        switch Gate.check(url, from: webView.url, byApp: byApp, accountsAllowed: AppModel.shared.accountsAllowed) {
         case .allow:
             decisionHandler(.allow)
         case .blockAccounts:
             decisionHandler(.cancel)
-            webView.load(URLRequest(url: blockedPageURL("blockAccounts")))
+            webView.load(URLRequest(url: blockedPageURL("blockAccounts", for: url)))
         case .block(let message):
             decisionHandler(.cancel)
             AppModel.shared.flash(message)
@@ -201,7 +210,7 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
         if let url {
             switch Gate.check(url, from: webView.url, accountsAllowed: AppModel.shared.accountsAllowed) {
             case .allow: self.webView.load(action.request)
-            case .blockAccounts: self.webView.load(URLRequest(url: blockedPageURL("blockAccounts")))
+            case .blockAccounts: self.webView.load(URLRequest(url: blockedPageURL("blockAccounts", for: url)))
             case .block(let message): AppModel.shared.flash(message)
             }
         }

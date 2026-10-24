@@ -88,15 +88,22 @@ store.overrides = { ...(store.overrides || {}), friendAllowlist: ["sciencesam", 
 const home = track(await ctx.newPage());
 await home.goto(origin + "/_app/home.html");
 await home.waitForSelector(".creator");
-check((await home.$$(".creator")).length === 3, "home lists approved creators");
+check((await home.$$("#creators .creator")).length === 3, "home lists approved creators");
 check(!(await home.textContent("#tiles")).includes("Following"), "no Following tile without an account");
-check((await home.textContent("#note")).includes("start at 16"), "home explains the under-16 rule");
+check((await home.textContent("#tiktokAccount")).includes("start at 16"), "home explains the under-16 rule");
+check(!(await home.$("#tiktokAccount a")) && !(await home.$("#snapAccount a")), "no sign in / sign up under 16 in Australia");
+check((await home.textContent("#snapTiles")).includes("Open Snapchat") && !(await home.$("#snapTiles a.tile.off[href='https://www.snapchat.com/']")),
+  "Snapchat opens from home even with Spotlight off");
 if (shots) await home.screenshot({ path: path.join(shotsDir, "14-app-home.png") });
 
 // 3. Settings changes reach the home page live (onChanged broadcast).
 await settings.evaluate(() => chrome.storage.local.set({ region: "default" }));
 await home.waitForFunction(() => document.getElementById("tiles").textContent.includes("Following"));
 check(true, "home updates live when settings change");
+check(await home.$$eval("#tiktokAccount a, #snapAccount a", as => as.map(a => a.textContent + " " + new URL(a.href).host).join("|")) ===
+  "Sign in www.tiktok.com|Create an account www.tiktok.com|Sign in accounts.snapchat.com|Create an account accounts.snapchat.com",
+  "sign in and create-account buttons for TikTok and Snapchat once accounts are allowed");
+if (shots) await home.screenshot({ path: path.join(shotsDir, "14b-app-home-accounts.png") });
 await settings.evaluate(() => chrome.storage.local.set({ region: "AU" }));
 
 // 4. A non-settings page can only write counters, not rules.

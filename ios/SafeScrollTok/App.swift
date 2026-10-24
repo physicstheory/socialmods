@@ -18,11 +18,12 @@ final class AppModel: ObservableObject {
     @Published var showSettings = false
     @Published var toast: String?
     @Published private(set) var config: [String: Any] = [:]
-    // Colours at the page's top and bottom edges, painted into the strips around it.
-    @Published var edgeTop: Color = .black
-    @Published var edgeBottom: Color = .black
-    @Published var topIsDark = true
+    /// Whether the top of the page is dark, so the clock and battery stay readable over it.
+    @Published var topIsDark = false
+    /// The phone's own Light / Dark setting. Web pages and settings always follow this.
+    @Published var systemScheme: ColorScheme = UIScreen.main.traitCollection.userInterfaceStyle == .dark ? .dark : .light
     lazy var browser = Browser()
+    let edges = EdgeSampler()
 
     var accountsAllowed: Bool { config["accountsAllowed"] as? Bool ?? false }
     /// Where the app opens: TikTok's For You if it's on, otherwise Following. SafeScroll's own
@@ -34,6 +35,12 @@ final class AppModel: ObservableObject {
         return Browser.homeURL
     }
     var minAccountAge: Int { (config["minAccountAge"] as? NSNumber)?.intValue ?? 13 }
+    var snapchatBlocked: Bool { (config["blockedPlatforms"] as? [String] ?? []).contains("snapchat") }
+    /// Where "Snapchat" in SafeScroll opens: Spotlight when For You is on, otherwise Snapchat's home page.
+    var snapchatURL: URL {
+        let forYou = config["forYou"] as? [String: Any]
+        return URL(string: forYou?["enabled"] as? Bool == true ? "https://www.snapchat.com/spotlight" : "https://www.snapchat.com/")!
+    }
 
     private init() {
         // Simulator/Xcode only (screenshots): --welcome-done YES|NO
@@ -128,15 +135,16 @@ struct MainView: View {
     @ObservedObject var browser: Browser
 
     var body: some View {
-        // Just TikTok's own mobile site, with its own bottom bar (Home, Friends, +, Inbox, Profile).
-        // Swipe from the left edge to go back.
-        WebViewHost(webView: browser.webView)
-            // The strips under the clock and below the page take the page's own edge colours,
-            // so TikTok and Snapchat look edge-to-edge like their real apps.
-            .background {
-                VStack(spacing: 0) { model.edgeTop; model.edgeBottom }.ignoresSafeArea()
-            }
-            .preferredColorScheme(model.topIsDark ? .dark : .light)
+        ZStack {
+            // The strips under the clock and below the page show the page's own top and bottom
+            // rows of pixels, so TikTok and Snapchat run edge to edge like their real apps.
+            EdgeStrips(sampler: model.edges)
+            // Just TikTok's own mobile site, with its own bottom bar (Home, Friends, +, Inbox, Profile).
+            // Swipe from the left edge to go back.
+            WebViewHost(webView: browser.webView)
+        }
+        // Only the clock and battery colour follows the page; the pages themselves follow the phone's theme.
+        .preferredColorScheme(model.topIsDark ? .dark : .light)
         // Small cog for parent settings, top-right on every screen.
         .overlay(alignment: .topTrailing) {
             Button { model.showSettings = true } label: {
@@ -161,7 +169,9 @@ struct MainView: View {
             }
         }
         .animation(.easeInOut, value: model.toast)
-        .sheet(isPresented: $model.showSettings) { SettingsSheet(browser: browser) }
+        .sheet(isPresented: $model.showSettings) {
+            SettingsSheet(browser: browser).preferredColorScheme(model.systemScheme)
+        }
         .sheet(item: $browser.popup) { item in
             NavigationStack {
                 WebViewHost(webView: item.webView)
@@ -172,8 +182,10 @@ struct MainView: View {
                         ToolbarItem(placement: .navigationBarTrailing) { Button("Close") { browser.popup = nil } }
                     }
             }
+            .preferredColorScheme(model.systemScheme)
         }
         .onAppear {
+            model.edges.start(browser.webView)
             // Launch arguments (only settable from Xcode or the simulator), used to take screenshots:
             //   --open <url>      open this page instead of the usual start page
             //   --show-settings   open the settings sheet
@@ -187,6 +199,7 @@ struct MainView: View {
             }
             if args.contains("--show-settings") { model.showSettings = true }
         }
+        .onDisappear { model.edges.stop() }
     }
 }
 
@@ -206,8 +219,8 @@ struct SettingsSheet: View {
                         Menu {
                             Button { browser.load(AppModel.shared.startURL); dismiss() } label: { Label("Back to TikTok", systemImage: "play.rectangle") }
                             Button { browser.goHome(); dismiss() } label: { Label("SafeScroll home", systemImage: "house") }
-                            if !(AppModel.shared.config["blockedPlatforms"] as? [String] ?? []).contains("snapchat") {
-                                Button { browser.openSnapchat(); dismiss() } label: { Label("Snapchat", systemImage: "camera") }
+                            if !AppModel.shared.snapchatBlocked {
+                                Button { browser.openSnapchat(); dismiss() } label: { Label("Open Snapchat", systemImage: "camera") }
                             }
                             Button { browser.webView.reload(); dismiss() } label: { Label("Reload page", systemImage: "arrow.clockwise") }
                             Button("Sign out of TikTok", role: .destructive) { confirmSignOut = true }

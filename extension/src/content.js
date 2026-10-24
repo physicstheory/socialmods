@@ -76,7 +76,7 @@
     if (onFyp) {
       if (!cfg.forYou.enabled) {
         const landing = noAccountHome() || (site.safeLanding && new URL(site.safeLanding, url).href);
-        if (landing && !isSamePage(landing, url)) return location.replace(landing);
+        if (landing && !isSamePage(landing, url) && !bouncedRecently()) return location.replace(landing);
         return blockPage("disableForYou");
       }
       const reason = forYouBlockReason();
@@ -89,7 +89,7 @@
 
     // Without an account the Following feed is just a log-in prompt; go to the app's own home instead.
     const home = noAccountHome();
-    if (home && site.safeLanding && isSamePage(site.safeLanding, url)) return location.replace(home);
+    if (home && site.safeLanding && isSamePage(site.safeLanding, url) && !bouncedRecently()) return location.replace(home);
 
     for (const [key, patterns] of Object.entries(site.paths || {})) {
       if (key === "disableForYou" || !cfg[key]) continue;
@@ -97,9 +97,20 @@
     }
   }
 
-  // The iPhone app has its own home page (approved creators) for when no account is allowed.
+  // The iPhone app has its own home page (approved creators) for when no account is allowed,
+  // unless the site's own landing page works logged out (Snapchat).
   function noAccountHome() {
+    if (site.landingWorksLoggedOut) return null;
     return cfg.blockAccounts && globalThis.SafeScrollPlatform && SafeScrollPlatform.homeURL || null;
+  }
+
+  // Stops a redirect loop if a site sends its landing page straight back to a blocked feed.
+  function bouncedRecently() {
+    try {
+      const last = Number(sessionStorage.getItem("safescroll-bounce") || 0);
+      sessionStorage.setItem("safescroll-bounce", String(Date.now()));
+      return Date.now() - last < 4000;
+    } catch { return false; }
   }
 
   function isSamePage(target, url) {

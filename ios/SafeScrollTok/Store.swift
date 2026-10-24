@@ -22,8 +22,7 @@ enum Resources {
          extensionFile("src/filters.js"),
          extensionFile("src/policy.js"),
          extensionFile("src/sites.js"),
-         extensionFile("src/content.js"),
-         appFile("edges.js")].joined(separator: "\n;\n")
+         extensionFile("src/content.js")].joined(separator: "\n;\n")
     }
 }
 

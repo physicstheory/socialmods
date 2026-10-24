@@ -58,6 +58,7 @@ jobs:
           S17=$(seed "{$PIN,\"age\":17,\"region\":\"default\",\"overrides\":{\"disableForYou\":false,$CREATORS}}")
           S17U=$(seed "{$PIN,\"age\":17,\"region\":\"default\",\"unlockedUntil\":$LATER,\"overrides\":{\"disableForYou\":false,$CREATORS}}")
           S14AU=$(seed "{$PIN,\"age\":14,\"region\":\"AU\",\"overrides\":{$CREATORS}}")
+          S16AU=$(seed "{$PIN,\"age\":16,\"region\":\"AU\",\"overrides\":{$CREATORS}}")
 
           # 1. First launch: parent setup
           run --seed-store "$(seed '{}')" --welcome-done NO; shot 01-first-launch-setup 10
@@ -93,6 +94,18 @@ jobs:
           run --seed-store "$S14AU" --welcome-done YES --open "https://map.snapchat.com/"; shot 15-app-snap-map-blocked-14 12
           run --seed-store "$S14AU" --welcome-done YES; xcrun simctl io "$UDID" screenshot /dev/null; sleep 8
           shot 16-app-home-with-snapchat-14 2
+
+          # 8. 16 in Australia: sign in / create an account buttons for TikTok and Snapchat
+          run --seed-store "$S16AU" --welcome-done YES --open "safescroll://app/_app/home.html"; shot 17-app-home-accounts-16-australia 10
+          # Snapchat opens for the 14-year-old even with Spotlight off
+          run --seed-store "$S14AU" --welcome-done YES --open "https://www.snapchat.com/"; shot 18-app-snapchat-home-14 20
+
+          # 9. The phone in Dark mode: SafeScroll's pages follow it, the strips match the page
+          xcrun simctl ui "$UDID" appearance dark || true
+          run --seed-store "$S16AU" --welcome-done YES --open "safescroll://app/_app/home.html"; shot 19-app-home-dark-mode 10
+          run --seed-store "$S17" --welcome-done YES; shot 20-app-tiktok-foryou-dark-mode 25
+          run --seed-store "$S17" --welcome-done YES --open "https://www.snapchat.com/spotlight"; shot 21-app-snapchat-spotlight-dark-mode 20
+          xcrun simctl ui "$UDID" appearance light || true
           ls -la shots
 
       - name: Publish screenshots

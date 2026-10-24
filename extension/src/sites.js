@@ -52,6 +52,7 @@
         disableMap: [/^map\.snapchat\.com$/]         // Snap Map shows friends' locations
       },
       safeLanding: "https://www.snapchat.com/",
+      landingWorksLoggedOut: true, // Snapchat's home page works without an account
       hide: {
         disableForYou: ['a[href*="/spotlight"]'],
         disableExplore: ['a[href*="/discover"]', 'a[href*="/lens"]', 'a[href*="/explore"]'],

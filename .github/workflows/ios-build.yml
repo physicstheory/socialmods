@@ -1,4 +1,4 @@
-# Builds an unsigned SafeScroll.ipa on a GitHub-hosted Mac.
+# Builds an unsigned SafeTok.ipa on a GitHub-hosted Mac.
 # Install it from Windows with Sideloadly, which signs it with your Apple ID (see ios/README.md).
 name: Build iPhone app
 
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write   # to publish SafeScroll.ipa at a fixed download link
+  contents: write   # to publish SafeTok.ipa at a fixed download link
 
 jobs:
   build:
@@ -44,24 +44,24 @@ jobs:
         run: |
           mkdir -p Payload
           cp -R build/Build/Products/Release-iphoneos/SafeScrollTok.app Payload/
-          zip -qry SafeScroll.ipa Payload
+          zip -qry SafeTok.ipa Payload
 
       - uses: actions/upload-artifact@v4
         with:
-          name: SafeScroll-ipa
-          path: ios/SafeScroll.ipa
+          name: SafeTok-ipa
+          path: ios/SafeTok.ipa
           retention-days: 30
 
       # Fixed link that always has the newest build:
-      # https://github.com/<owner>/<repo>/releases/download/latest/SafeScroll.ipa
+      # https://github.com/<owner>/<repo>/releases/download/latest/SafeTok.ipa
       - name: Publish to the "latest" download link
         env:
           GH_TOKEN: ${{ github.token }}
         working-directory: ios
         run: |
           gh release delete latest --cleanup-tag --yes || true
-          gh release create latest SafeScroll.ipa --target "$GITHUB_SHA" --latest \
-            --title "SafeScroll iPhone app" \
+          gh release create latest SafeTok.ipa --target "$GITHUB_SHA" --latest \
+            --title "SafeTok iPhone app" \
             --notes "Newest build. Install with windows/Install-SafeScroll.cmd (see INSTALL.md)."
 
       - name: Upload build log on failure

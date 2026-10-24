@@ -1,9 +1,9 @@
-# Downloads the newest SafeScroll.ipa and opens Sideloadly ready to install it.
+# Downloads the newest SafeTok.ipa and opens Sideloadly ready to install it.
 # Run by double-clicking Install-SafeScroll.cmd.
 $ErrorActionPreference = "Stop"
-$ipaUrl = "https://github.com/physicstheory/socialmods/releases/download/latest/SafeScroll.ipa"
+$ipaUrl = "https://github.com/physicstheory/socialmods/releases/download/latest/SafeTok.ipa"
 $folder = Join-Path ([Environment]::GetFolderPath("Desktop")) "SafeScroll"
-$ipa = Join-Path $folder "SafeScroll.ipa"
+$ipa = Join-Path $folder "SafeTok.ipa"
 
 function Say($text, $color = "White") { Write-Host $text -ForegroundColor $color }
 
@@ -43,7 +43,7 @@ Start-Process explorer.exe "/select,`"$ipa`""
 
 Say "`n  Almost done. In Sideloadly:" Cyan
 Say "   1. Plug in and unlock your iPhone (tap Trust if asked)."
-Say "   2. Drag SafeScroll.ipa from the window that just opened onto Sideloadly."
+Say "   2. Drag SafeTok.ipa from the window that just opened onto Sideloadly."
 Say "   3. Type your Apple ID email and click Start. Enter the code that appears on your phone."
 Say "`n  First time only, on the iPhone:" Cyan
 Say "   - Settings > Privacy & Security > Developer Mode > On (then restart)"

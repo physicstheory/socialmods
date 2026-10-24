@@ -229,7 +229,7 @@ struct SettingsSheet: View {
                     ToolbarItem(placement: .navigationBarLeading) {
                         Menu {
                             Button { browser.load(AppModel.shared.startURL); dismiss() } label: { Label("Back to TikTok", systemImage: "play.rectangle") }
-                            Button { browser.goHome(); dismiss() } label: { Label("SafeScroll home", systemImage: "house") }
+                            Button { browser.goHome(); dismiss() } label: { Label("SafeTok home", systemImage: "house") }
                             if !AppModel.shared.snapchatBlocked {
                                 Button { browser.openSnapchat(); dismiss() } label: { Label("Open Snapchat", systemImage: "camera") }
                             }

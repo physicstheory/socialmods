@@ -23,7 +23,7 @@ const [em, title, why] = REASONS[p.get("reason")] || ["🛡️", "This page is b
 document.getElementById("em").textContent = em;
 document.getElementById("title").textContent = title;
 document.getElementById("why").textContent = why;
-document.title = title + " · SafeScroll";
+document.title = title + " · " + SafeScrollIcons.brand;
 // Only offer the Following feed when the For You feed was what got stopped.
 try {
   const back = new URL(p.get("back") || "");

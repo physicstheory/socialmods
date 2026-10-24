@@ -7,7 +7,7 @@
    - **iTunes** from [apple.com/itunes](https://www.apple.com/itunes/download/win64). *Not* the Microsoft Store version.
    - **Sideloadly** from [sideloadly.io](https://sideloadly.io/).
 2. **Download and double-click [Install-SafeScroll.cmd](https://github.com/physicstheory/socialmods/raw/HEAD/windows/Install-SafeScroll.cmd).** If Windows warns about it, click **More info → Run anyway**. It downloads the newest app and opens Sideloadly next to the file.
-3. **In Sideloadly:** plug in and unlock the iPhone, drag **SafeScroll.ipa** onto Sideloadly, type your Apple ID email, and click **Start**. Then type the code that appears on your phone.
+3. **In Sideloadly:** plug in and unlock the iPhone, drag **SafeTok.ipa** onto Sideloadly, type your Apple ID email, and click **Start**. Then type the code that appears on your phone.
 4. **On the iPhone (first time only):**
    - Settings → Privacy & Security → **Developer Mode** → On → restart → **Turn On**
    - Settings → General → **VPN & Device Management** → your Apple ID → **Trust**

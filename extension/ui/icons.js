@@ -22,10 +22,14 @@
   function icon(name, cls) {
     return `<svg class="ic ${cls || ""}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] || ""}</svg>`;
   }
+  // Inside the iPhone app the pages are served from safescroll:// and the app is called SafeTok.
+  const brand = root.location && root.location.protocol === "safescroll:" ? "SafeTok" : "SafeScroll";
   function hydrate(scope) {
     (scope || document).querySelectorAll("[data-icon]").forEach(el => {
       if (!el.dataset.iconDone) { el.insertAdjacentHTML("afterbegin", icon(el.dataset.icon)); el.dataset.iconDone = "1"; }
     });
+    (scope || document).querySelectorAll("[data-brand]").forEach(el => { el.textContent = brand; });
+    if (!scope && brand !== "SafeScroll") document.title = document.title.replace(/SafeScroll/g, brand);
   }
-  root.SafeScrollIcons = { icon, hydrate };
+  root.SafeScrollIcons = { icon, hydrate, brand };
 })(globalThis);

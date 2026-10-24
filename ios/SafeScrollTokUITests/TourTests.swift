@@ -57,7 +57,7 @@ final class TourTests: XCTestCase {
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         XCUIDevice.shared.press(.home)
         shot("home-screen")
-        let icon = springboard.icons["SafeScroll"]
+        let icon = springboard.icons["SafeTok"]
         for _ in 0..<4 where !(icon.exists && icon.isHittable) { springboard.swipeLeft(); wait(1) }
         shot("home-screen-safescroll-icon", after: 1)
 

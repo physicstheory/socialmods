@@ -29,7 +29,7 @@ enum Gate {
             let fromHost = current?.host?.lowercased() ?? ""
             let fromApp = current == nil || current?.scheme == BundleSchemeHandler.scheme
             if !fromApp && !matches(fromHost, snapchatHosts) {
-                return .block("Open Snapchat from SafeScroll's home screen or settings.")
+                return .block("Open Snapchat from SafeTok's home screen or settings.")
             }
         }
         return check(url, accountsAllowed: accountsAllowed)

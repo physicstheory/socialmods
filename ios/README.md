@@ -29,7 +29,7 @@ A personal iPhone app that opens TikTok's mobile website inside the app with the
 - **Camera, microphone and photos** work for uploading. iOS asks the first time.
 
 ## Install from a Windows PC (no Mac needed)
-**Quick version: [INSTALL.md](../INSTALL.md).** The installer script downloads the newest build from the fixed link `releases/download/latest/SafeScroll.ipa` and opens Sideloadly. The steps below do the same by hand.
+**Quick version: [INSTALL.md](../INSTALL.md).** The installer script downloads the newest build from the fixed link `releases/download/latest/SafeTok.ipa` and opens Sideloadly. The steps below do the same by hand.
 
 GitHub builds the app on one of its Macs every time the code changes. You then install it with **Sideloadly**, which signs it with your Apple ID.
 
@@ -41,10 +41,10 @@ GitHub builds the app on one of its Macs every time the code changes. You then i
 **Each install**
 1. **Download the app file:**
    1. Open GitHub → this repository → **Actions** → **Build iPhone app** → the latest run with a green tick.
-   2. Under **Artifacts**, download **SafeScroll-ipa**.
-   3. Unzip it to get `SafeScroll.ipa`.
+   2. Under **Artifacts**, download **SafeTok-ipa**.
+   3. Unzip it to get `SafeTok.ipa`.
 2. **Install with Sideloadly:**
-   1. Open Sideloadly and drag `SafeScroll.ipa` onto it.
+   1. Open Sideloadly and drag `SafeTok.ipa` onto it.
    2. Pick your iPhone, enter your Apple ID email, and click **Start**. Sign in with your Apple ID password and the 2-factor code when asked.
 3. **On the iPhone:**
    1. Go to Settings → General → **VPN & Device Management**, tap your Apple ID, then tap **Trust**.

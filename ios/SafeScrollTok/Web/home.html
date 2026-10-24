@@ -1,13 +1,12 @@
 <!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>SafeScroll</title>
+<title>SafeTok</title>
 <link rel="stylesheet" href="/ui/base.css">
 <style>
   body{padding:calc(env(safe-area-inset-top) + 20px) 16px 32px;max-width:560px;margin:0 auto}
   .hello{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-right:40px} /* room for the settings cog */
-  .logo{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff}
-  .logo .ic{width:22px;height:22px}
+  .logo{width:46px;height:46px;border-radius:12px;flex:none}
   .hello h1{font-size:21px}
   .hello p{margin:0;color:var(--muted);font-size:13.5px}
   a.tile{display:flex;align-items:center;gap:14px;padding:16px;border-radius:18px;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);color:var(--text);text-decoration:none;margin-bottom:12px}
@@ -34,7 +33,7 @@
   .locked .ic{width:15px;height:15px;margin-top:2px}
 </style></head>
 <body>
-  <div class="hello"><div class="logo" data-icon="shield"></div><div><h1>What do you want to watch?</h1><p id="sub"></p></div></div>
+  <div class="hello"><img class="logo" src="/_app/icon.png" alt="SafeTok"><div><h1>What do you want to watch?</h1><p id="sub"></p></div></div>
 
   <h2 class="service first"><span class="badge tiktok">♪</span>TikTok</h2>
   <div id="tiles"></div>

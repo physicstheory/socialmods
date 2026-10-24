@@ -28,7 +28,7 @@ targets:
     info:
       path: SafeScrollTok/Info.plist
       properties:
-        CFBundleDisplayName: SafeScroll
+        CFBundleDisplayName: SafeTok
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIRequiresFullScreen: true

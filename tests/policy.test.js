@@ -114,3 +114,15 @@ test("region guess from locale", () => {
   assert.equal(P.guessRegion("en-US"), "default");
   assert.equal(P.guessRegion(undefined), "default");
 });
+
+test("Snap Map: locked off at 13-15, can be switched on at 16-17, off for adults", () => {
+  assert.equal(P.effectiveSettings(14, { disableMap: false }).disableMap, true);
+  assert.equal(P.effectiveSettings(16, { disableMap: false }).disableMap, false);
+  assert.equal(P.effectiveSettings(30, {}).disableMap, false);
+});
+
+test("approved Snapchat accounts are kept separately", () => {
+  const c = P.effectiveSettings(14, { snapAllowlist: ["@NASA", " Bob "], friendAllowlist: ["tiktoker"] });
+  assert.deepEqual(c.snapAllowlist, ["nasa", "bob"]);
+  assert.deepEqual(c.friendAllowlist, ["tiktoker"]);
+});

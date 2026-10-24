@@ -24,7 +24,8 @@ const FEATURES = {
   friendAllowlistOnly: ["Approved accounts only", "Follow, Add Friend and Message only work on accounts you approve."],
   disableDMs: ["Turn off messages", "Blocks direct messages, Messenger and WhatsApp Web."],
   hideComments: ["Hide comments", "Hides comment sections everywhere."],
-  disableStories: ["Turn off Stories", "Blocks Stories on Instagram, Facebook and Snapchat."]
+  disableStories: ["Turn off Stories", "Blocks Stories on Instagram, Facebook and Snapchat."],
+  disableMap: ["Turn off Snap Map", "Blocks Snapchat's map, which shows friends' locations."]
 };
 
 const CATEGORY_DESC = {
@@ -261,7 +262,10 @@ function renderFriends(tier, cfg) {
       <span class="muted">${on ? "Follow, Add Friend and Message buttons are hidden everywhere except on the accounts below." : "Turn it on under Features to limit friending to this list."}</span></div></div>
     <div class="subhead">Approved accounts</div>
     <div style="margin-top:10px">${tagInput("friendAllowlist", cfg.friendAllowlist, "Add a username, e.g. grandma.jones", "@")}</div>
-    <p class="hint">Use the username exactly as it appears in the profile link, such as tiktok.com/@<b>username</b>.</p>`);
+    <p class="hint">Use the username exactly as it appears in the profile link, such as tiktok.com/@<b>username</b>.</p>
+    <div class="subhead">Approved Snapchat accounts</div>
+    <div style="margin-top:10px">${tagInput("snapAllowlist", cfg.snapAllowlist, "Add a Snapchat username, e.g. nasa", "@")}</div>
+    <p class="hint">Public Snapchat profiles (snapchat.com/add/<b>username</b>). With no account allowed, these are the Snapchat accounts your child can view.</p>`);
 }
 
 function renderTime(tier, cfg) {

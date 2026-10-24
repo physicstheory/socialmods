@@ -54,7 +54,7 @@ jobs:
           seed() { printf '%s' "$1" | base64 | tr -d '\n'; }
           PIN='"pinSalt":"s","pinHash":"1f884ca61b18b4dcde9cc304095322b1c5b15422400c4796cf0bbadbea5f00aa"'
           LATER=$(( ($(date +%s) + 7200) * 1000 ))
-          CREATORS='"friendAllowlist":["nasa","sciencesam","bakewithmia"]'
+          CREATORS='"friendAllowlist":["nasa","sciencesam","bakewithmia"],"snapAllowlist":["nasa","natgeo"]'
           S17=$(seed "{$PIN,\"age\":17,\"region\":\"default\",\"overrides\":{\"disableForYou\":false,$CREATORS}}")
           S17U=$(seed "{$PIN,\"age\":17,\"region\":\"default\",\"unlockedUntil\":$LATER,\"overrides\":{\"disableForYou\":false,$CREATORS}}")
           S14AU=$(seed "{$PIN,\"age\":14,\"region\":\"AU\",\"overrides\":{$CREATORS}}")
@@ -81,6 +81,18 @@ jobs:
           run --seed-store "$S14AU" --welcome-done YES --open "https://www.tiktok.com/@nasa"; shot 07-app-approved-creator 25
           run --seed-store "$S14AU" --welcome-done YES --open "https://www.tiktok.com/foryou"; shot 08-app-foryou-off-14-australia 15
           run --seed-store "$S14AU" --welcome-done YES --open "https://www.tiktok.com/login"; shot 09-app-login-blocked-14-australia 12
+
+          # 7. Snapchat
+          run --seed-store "$S17" --welcome-done YES --open "https://www.snapchat.com/spotlight"; shot 10-app-snapchat-spotlight-17 20
+          xcrun simctl terminate "$UDID" "$BID" || true
+          xcrun simctl openurl "$UDID" "https://www.snapchat.com/spotlight"; shot 11-safari-snapchat-spotlight 20
+          xcrun simctl terminate "$UDID" com.apple.mobilesafari || true
+          run --seed-store "$S14AU" --welcome-done YES --open "https://www.snapchat.com/add/nasa"; shot 12-app-snapchat-approved-account-14 18
+          run --seed-store "$S14AU" --welcome-done YES --open "https://www.snapchat.com/spotlight"; shot 13-app-snapchat-spotlight-off-14 12
+          run --seed-store "$S14AU" --welcome-done YES --open "https://web.snapchat.com/"; shot 14-app-snapchat-chat-blocked-14 12
+          run --seed-store "$S14AU" --welcome-done YES --open "https://map.snapchat.com/"; shot 15-app-snap-map-blocked-14 12
+          run --seed-store "$S14AU" --welcome-done YES; xcrun simctl io "$UDID" screenshot /dev/null; sleep 8
+          shot 16-app-home-with-snapchat-14 2
           ls -la shots
 
       - name: Publish screenshots

@@ -30,7 +30,7 @@ const ctx = await browser.newContext({ timezoneId: daytimeTZ, viewport: { width:
 await ctx.exposeBinding("__gmGet", (_s, k, d) => (k in gm ? gm[k] : d));
 await ctx.exposeBinding("__gmSet", (_s, k, v) => { gm[k] = v; });
 await ctx.addInitScript(src => {
-  if (top !== self || !location.hostname.endsWith("tiktok.com")) return; // @noframes + @match
+  if (top !== self || !/(tiktok|snapchat)\.com$/.test(location.hostname)) return; // @noframes + @match
   window.GM = { getValue: (k, d) => window.__gmGet(k, d), setValue: (k, v) => window.__gmSet(k, v) };
   (0, eval)(src);
 }, script);
@@ -86,7 +86,9 @@ await Promise.all([page.waitForEvent("load"), page.mouse.click(360, 24)]);
 await page.waitForTimeout(300);
 check(!(await findSettings(page)), "Done closes settings");
 await page.goto("https://www.tiktok.com/foryou");
-await page.waitForURL(/\/following$/, { timeout: 5000 }).then(() => check(true, "For You (off at 14) redirects to Following"), () => check(false, "For You (off at 14) redirects to Following"));
+let onFollowing = false;
+for (let i = 0; i < 50 && !onFollowing; i++) { onFollowing = /\/following$/.test(page.url()); if (!onFollowing) await page.waitForTimeout(100); }
+check(onFollowing, "For You (off at 14) redirects to Following");
 await page.waitForTimeout(800);
 const visible = await page.$$eval('[data-e2e="recommend-list-item-container"]', els => els.filter(e => getComputedStyle(e).display !== "none").map(e => e.textContent));
 check(visible.length === 2 && !visible.some(t => t.includes("blackout")), "harmful post removed, safe posts stay");
@@ -120,6 +122,25 @@ check(true, "wrong PIN refused");
 await f.fill("#unlockPin", "123456"); await f.click("#unlockForm button");
 await f.waitForSelector("#panel:not([hidden])");
 check(true, "right PIN unlocks settings");
+
+// 5b. Snapchat at 14 in Australia: Spotlight follows For You (off), chat/login and Snap Map blocked.
+await ctx.route("https://*.snapchat.com/**", r => r.fulfill({ contentType: "text/html; charset=utf-8",
+  body: `<!doctype html><meta charset="utf-8"><body><a class="snapopen" href="snapchat://">Open Snapchat</a>
+    <article class="snappost">@nasa · moon landing</article><article class="snappost">@someone · try the #blackoutchallenge</article>` }));
+gm["safescroll.storage.v1"] = JSON.stringify({ ...store(), unlockedUntil: 0 });
+await page.goto("https://www.snapchat.com/spotlight");
+await page.waitForTimeout(1500);
+check(!new URL(page.url()).pathname.startsWith("/spotlight"), "Snapchat Spotlight off at 14 (follows For You)" + " → " + page.url());
+for (const [url, what, heading] of [["https://web.snapchat.com/", "Snapchat chat/login blocked at 14 in Australia", "Accounts aren't available"],
+                                     ["https://map.snapchat.com/", "Snap Map blocked at 14", "Snap Map is turned off"]]) {
+  await page.goto(url); await page.waitForTimeout(1200);
+  const b = await findBlocked(page);
+  check(!!b && (await b.textContent("h1")).includes(heading), what);
+}
+await page.goto("https://www.snapchat.com/add/nasa"); await page.waitForTimeout(1200);
+const shownSnap = await page.$$eval('.snappost', els => els.filter(e => getComputedStyle(e).display !== "none").map(e => e.textContent));
+check(shownSnap.length === 1, "Snapchat: harmful post filtered " + JSON.stringify(shownSnap));
+check(await page.$eval(".snapopen", e => getComputedStyle(e).display === "none"), "Snapchat: 'Open Snapchat' hidden");
 
 // 6. Under 13: everything blocked.
 gm["safescroll.storage.v1"] = JSON.stringify({ ...store(), age: 11 });

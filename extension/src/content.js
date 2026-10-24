@@ -83,6 +83,10 @@
       if (reason) return blockPage(reason);
     }
 
+    for (const [key, hosts] of Object.entries(site.hostRules || {})) {
+      if (cfg[key] && hosts.some(re => re.test(url.hostname))) return blockPage(key);
+    }
+
     // Without an account the Following feed is just a log-in prompt; go to the app's own home instead.
     const home = noAccountHome();
     if (home && site.safeLanding && isSamePage(site.safeLanding, url)) return location.replace(home);
@@ -185,7 +189,7 @@
     const profile = site.profile(location.pathname);
     // No account allowed: following is impossible, so Follow/Message are hidden everywhere.
     const allowed = !cfg.blockAccounts && (!cfg.friendAllowlistOnly ||
-      (profile && cfg.friendAllowlist.includes(decodeURIComponent(profile).toLowerCase())));
+      (profile && (cfg[site.allowlistKey || "friendAllowlist"] || []).includes(decodeURIComponent(profile).toLowerCase())));
     document.querySelectorAll("button,[role='button'],a[role='link']").forEach(b => {
       const label = (b.innerText || b.getAttribute("aria-label") || "").trim();
       if (!label || label.length > 20) return;

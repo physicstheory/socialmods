@@ -35,12 +35,12 @@
         blockedPlatforms: PLATFORMS.slice(), // all of these services require 13+
         disableForYou: true, disableExplore: true, disableShortVideo: true, disableLive: true,
         disableSearch: true, hideFriendSuggestions: true, friendAllowlistOnly: true,
-        disableDMs: true, hideComments: true, disableStories: true, filterCategories: ALL_CATEGORIES.slice(),
+        disableDMs: true, hideComments: true, disableStories: true, disableMap: true, filterCategories: ALL_CATEGORIES.slice(),
         filterMode: "remove", dailyMinutes: 0, bedtime: { start: "20:00", end: "07:00" }
       },
       locked: ["blockedPlatforms", "disableForYou", "disableExplore", "disableShortVideo", "disableLive",
         "disableSearch", "hideFriendSuggestions", "friendAllowlistOnly", "disableDMs", "hideComments",
-        "filterCategories", "filterMode"]
+        "disableMap", "filterCategories", "filterMode"]
     },
     {
       id: "13to15", maxAge: 15, label: "13 – 15",
@@ -48,10 +48,10 @@
         blockedPlatforms: ["metaai"],
         disableForYou: true, disableExplore: true, disableShortVideo: false, disableLive: true,
         disableSearch: true, hideFriendSuggestions: true, friendAllowlistOnly: true,
-        disableDMs: false, hideComments: true, disableStories: false, filterCategories: ALL_CATEGORIES.slice(),
+        disableDMs: false, hideComments: true, disableStories: false, disableMap: true, filterCategories: ALL_CATEGORIES.slice(),
         filterMode: "remove", dailyMinutes: 60, bedtime: { start: "21:30", end: "07:00" }
       },
-      locked: ["disableExplore", "disableLive", "hideFriendSuggestions",
+      locked: ["disableExplore", "disableLive", "hideFriendSuggestions", "disableMap",
         "friendAllowlistOnly", "filterCategories:selfHarm", "filterCategories:extremism",
         "filterCategories:hate", "filterCategories:violence", "filterCategories:sexual",
         "filterCategories:drugs", "filterCategories:gambling", "filterCategories:dangerousChallenges",
@@ -63,7 +63,7 @@
         blockedPlatforms: [],
         disableForYou: true, disableExplore: false, disableShortVideo: false, disableLive: true,
         disableSearch: false, hideFriendSuggestions: true, friendAllowlistOnly: false,
-        disableDMs: false, hideComments: false, disableStories: false,
+        disableDMs: false, hideComments: false, disableStories: false, disableMap: true,
         filterCategories: ALL_CATEGORIES.filter(c => c !== "mature"),
         filterMode: "blur", dailyMinutes: 120, bedtime: { start: "23:00", end: "06:00" }
       },
@@ -76,7 +76,7 @@
       settings: {
         blockedPlatforms: [], disableForYou: false, disableExplore: false, disableShortVideo: false,
         disableLive: false, disableSearch: false, hideFriendSuggestions: false, friendAllowlistOnly: false,
-        disableDMs: false, hideComments: false, disableStories: false,
+        disableDMs: false, hideComments: false, disableStories: false, disableMap: false,
         filterCategories: ["extremism", "selfHarm", "violence"], filterMode: "blur",
         dailyMinutes: 0, bedtime: null
       },
@@ -136,7 +136,7 @@
   }
 
   const STRICTER_BOOLEAN_TRUE = ["disableForYou", "disableExplore", "disableShortVideo", "disableLive",
-    "disableSearch", "hideFriendSuggestions", "friendAllowlistOnly", "disableDMs", "hideComments", "disableStories"];
+    "disableSearch", "hideFriendSuggestions", "friendAllowlistOnly", "disableDMs", "hideComments", "disableStories", "disableMap"];
 
   // Merge parent overrides onto tier defaults, discarding any override that
   // would loosen a locked setting.
@@ -191,6 +191,7 @@
 
     out.friendAllowlist = (o.friendAllowlist || []).map(s => String(s).trim().replace(/^@/, "").toLowerCase()).filter(Boolean);
     out.customTerms = (o.customTerms || []).map(String).filter(Boolean);
+    out.snapAllowlist = (o.snapAllowlist || []).map(v => String(v).trim().replace(/^@/, "").toLowerCase()).filter(Boolean);
     out.tier = tier.id;
     out.tierLabel = tier.label;
     return out;

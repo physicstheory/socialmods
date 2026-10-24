@@ -39,23 +39,38 @@
     snapchat: {
       hosts: [/(^|\.)snapchat\.com$/],
       paths: {
-        disableForYou: [/^\/spotlight/, /^\/discover/],
+        // Spotlight is Snapchat's algorithmic feed, so it follows the For You switch and limits.
+        disableForYou: [/^\/spotlight/],
         disableExplore: [/^\/discover/, /^\/explore/, /^\/lens/, /^\/t\//],
-        disableShortVideo: [/^\/spotlight/],
-        disableStories: [/^\/stories/, /^\/p\//],
+        disableStories: [/^\/stories/],
         disableSearch: [/^\/search/]
       },
-      safeLanding: "https://web.snapchat.com/",
-      hide: {
-        disableForYou: ['a[href*="/spotlight"]', 'a[href*="/discover"]'],
-        disableExplore: ['a[href*="/discover"]', 'a[href*="/lens"]'],
-        hideFriendSuggestions: ['[aria-label*="Quick Add" i]', '[aria-label*="Add Friends" i]', '[aria-label*="Suggested" i]'],
-        disableStories: ['[aria-label*="Stories" i]'],
-        disableSearch: ['input[placeholder*="Search" i]']
+      // Whole Snapchat sites that are switched off by a setting (checked by hostname).
+      hostRules: {
+        disableDMs: [/^web\.snapchat\.com$/],        // chat
+        blockAccounts: [/^accounts\.snapchat\.com$/, /^web\.snapchat\.com$/], // log in, sign up, chat
+        disableMap: [/^map\.snapchat\.com$/]         // Snap Map shows friends' locations
       },
-      posts: ['article', '[role="listitem"]', '[role="article"]'],
+      safeLanding: "https://www.snapchat.com/",
+      hide: {
+        disableForYou: ['a[href*="/spotlight"]'],
+        disableExplore: ['a[href*="/discover"]', 'a[href*="/lens"]', 'a[href*="/explore"]'],
+        hideFriendSuggestions: ['[aria-label*="Quick Add" i]', '[aria-label*="Add Friends" i]', '[aria-label*="Suggested" i]'],
+        disableStories: ['[aria-label*="Stories" i]', 'a[href*="/stories"]'],
+        disableSearch: ['input[placeholder*="Search" i]', 'a[href*="/search"]'],
+        disableMap: ['a[href*="map.snapchat.com"]'],
+        disableDMs: ['a[href*="web.snapchat.com"]'],
+        blockAccounts: ['a[href*="accounts.snapchat.com"]', 'a[href*="web.snapchat.com"]']
+      },
+      posts: ['article', '[role="listitem"]', '[role="article"]', '[class*="Spotlight" i] > div'],
       profile: p => (p.match(/^\/add\/([^/?#]+)/) || p.match(/^\/@([^/?#]+)/) || [])[1],
-      followText: [/^add friend$/i, /^add$/i, /^accept$/i, /^subscribe$/i]
+      allowlistKey: "snapAllowlist",
+      followText: [/^add friend$/i, /^add$/i, /^accept$/i, /^subscribe$/i, /^chat$/i],
+      nags: {
+        dismiss: [/^not now$/i, /^maybe later$/i, /^continue on web$/i, /^no thanks$/i],
+        dismissWithin: /open snapchat|get snapchat|download|use the app|in the app/i,
+        hide: [/^open snapchat$/i, /^get snapchat$/i, /^open in app$/i, /^download snapchat$/i, /^get the app$/i, /^open app$/i]
+      }
     },
     instagram: {
       hosts: [/(^|\.)instagram\.com$/],

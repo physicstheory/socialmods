@@ -5,7 +5,8 @@ import WebKit
 /// Which top-level pages the app will open.
 enum Gate {
     static let tiktokHosts = ["tiktok.com", "tiktokv.com", "tiktokv.us", "tiktokw.us", "tiktokcdn.com",
-                              "tiktokcdn-us.com", "ttwstatic.com", "byteoversea.com", "ibytedtos.com"]
+                              "tiktokcdn-us.com", "ttwstatic.com", "byteoversea.com", "ibytedtos.com",
+                              "snapchat.com", "snap.com"] // Snapchat's own rules (chat, log in, Snap Map) are applied by the filter scripts
     /// Sign-in providers TikTok offers ("Continue with Apple / Google / Facebook / X / LINE / Kakao").
     static let loginHosts = ["appleid.apple.com", "accounts.google.com", "facebook.com", "twitter.com", "x.com",
                              "access.line.me", "kauth.kakao.com", "accounts.kakao.com"]

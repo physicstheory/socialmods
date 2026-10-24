@@ -22,14 +22,22 @@
   .creator i{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--surface-2);font-style:normal;font-weight:700;color:var(--accent);flex:none}
   .creator span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .empty{color:var(--muted);font-size:14px;background:var(--surface);border:1px dashed var(--border);border-radius:14px;padding:16px;text-align:center}
+  .snap-h{display:flex;align-items:center;gap:8px;margin-top:30px}
+  .snap-badge{width:22px;height:22px;border-radius:6px;background:#fffc00;display:grid;place-items:center;font-size:13px}
   .note{display:flex;gap:8px;align-items:flex-start;color:var(--muted);font-size:12.5px;margin-top:20px}
   .note .ic{width:15px;height:15px;margin-top:2px}
 </style></head>
 <body>
   <div class="hello"><div class="logo" data-icon="shield"></div><div><h1>What do you want to watch?</h1><p id="sub"></p></div></div>
   <div id="tiles"></div>
-  <h2>Approved creators</h2>
+  <h2>Approved TikTok creators</h2>
   <div id="creators" class="creators"></div>
+  <section id="snap" hidden>
+    <h2 class="snap-h"><span class="snap-badge">👻</span>Snapchat</h2>
+    <div id="snapTiles"></div>
+    <h2>Approved Snapchat accounts</h2>
+    <div id="snapCreators" class="creators"></div>
+  </section>
   <div id="note" class="note"></div>
 <script src="/_app/chrome-shim.js"></script>
 <script src="/src/policy.js"></script>

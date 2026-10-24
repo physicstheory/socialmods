@@ -14,6 +14,7 @@ const REASONS = {
   disableDMs: ["💬", "Messages are turned off", "Direct messages aren't available."],
   disableStories: ["⭕", "Stories are turned off", "Stories aren't available."],
   blockAccounts: ["🔑", "Accounts aren't available yet", "Where you live, you need to be older to have an account. You can still watch public videos."],
+  disableMap: ["🗺️", "Snap Map is turned off", "The map that shows friends' locations isn't available."],
   hideFriendSuggestions: ["👥", "Friend suggestions are off", "Suggested accounts aren't available."]
 };
 const SAFE_HOSTS = /(^|\.)(tiktok\.com|instagram\.com|facebook\.com|threads\.(net|com)|snapchat\.com)$/;

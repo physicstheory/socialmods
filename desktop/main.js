@@ -18,7 +18,7 @@ ipcMain.handle("gm-get", (_e, key, fallback) => (key in store ? store[key] : fal
 ipcMain.handle("gm-set", (_e, key, value) => { store[key] = value; saveStore(); });
 
 // ---------- Which pages may open (same rules as the iPhone app) ----------
-const TIKTOK = ["tiktok.com", "tiktokv.com", "tiktokv.us", "tiktokw.us", "tiktokcdn.com", "tiktokcdn-us.com", "ttwstatic.com", "byteoversea.com", "ibytedtos.com"];
+const TIKTOK = ["tiktok.com", "tiktokv.com", "tiktokv.us", "tiktokw.us", "tiktokcdn.com", "tiktokcdn-us.com", "ttwstatic.com", "byteoversea.com", "ibytedtos.com", "snapchat.com", "snap.com"];
 const LOGIN = ["appleid.apple.com", "accounts.google.com", "facebook.com", "twitter.com", "x.com", "access.line.me", "kauth.kakao.com", "accounts.kakao.com"];
 const matches = (host, list) => list.some(d => host === d || host.endsWith("." + d));
 function allowed(url) {

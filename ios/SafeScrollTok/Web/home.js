@@ -26,6 +26,19 @@
       tile("https://www.tiktok.com/foryou", "play", "For You", fySub, fy.enabled) +
       (cfg.accountsAllowed ? tile("https://www.tiktok.com/following", "users", "Following", "Accounts you follow") : "");
 
+    // Snapchat section
+    const snapOn = !cfg.blockedPlatforms.includes("snapchat");
+    const snapList = cfg.snapAllowlist;
+    document.getElementById("snap").hidden = !snapOn;
+    if (snapOn) {
+      document.getElementById("snapTiles").innerHTML =
+        tile("https://www.snapchat.com/spotlight", "play", "Spotlight", fy.enabled ? fySub : (fy.allowed ? "Turned off in Settings" : "Not available at this age"), fy.enabled) +
+        (cfg.accountsAllowed && !cfg.disableDMs ? tile("https://web.snapchat.com/", "users", "Chat", "Your Snapchat friends") : "");
+      document.getElementById("snapCreators").innerHTML = snapList.length
+        ? snapList.map(u => `<a class="creator" href="https://www.snapchat.com/add/${encodeURIComponent(u)}"><i>${esc(u[0].toUpperCase())}</i><span>@${esc(u)}</span></a>`).join("")
+        : `<div class="empty" style="grid-column:1/-1">No Snapchat accounts yet. Add them under Friends in Settings.</div>`;
+    }
+
     const list = cfg.friendAllowlist;
     document.getElementById("creators").innerHTML = list.length
       ? list.map(u => `<a class="creator" href="https://www.tiktok.com/@${encodeURIComponent(u)}"><i>${esc(u[0].toUpperCase())}</i><span>@${esc(u)}</span></a>`).join("")

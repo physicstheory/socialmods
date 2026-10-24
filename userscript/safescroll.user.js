@@ -711,6 +711,8 @@ if (!data.pinHash) {
   let veilLifted = false;
   whenRoot(() => { if (!veilLifted) (document.head || document.documentElement).appendChild(veil); });
   function liftVeil() { veilLifted = true; veil.remove(); }
+  // Once this page is redirecting, later route checks (settings loading, SPA updates) leave it alone.
+  let leaving = false;
 
   function blockPage(reason) {
     const back = site.safeLanding ? new URL(site.safeLanding, location.href).href : "";
@@ -719,7 +721,7 @@ if (!data.pinHash) {
     const url = chrome.runtime.getURL("blocked/blocked.html") +
       "?reason=" + encodeURIComponent(reason) + "&site=" + encodeURIComponent(siteId) +
       (back ? "&back=" + encodeURIComponent(back) : "");
-    location.replace(url);
+    leaveTo(url);
   }
 
   function today() { return new Date().toISOString().slice(0, 10); }
@@ -752,7 +754,7 @@ if (!data.pinHash) {
   }
 
   function checkRoute() {
-    if (!cfg) return;
+    if (!cfg || leaving) return;
     if (cfg.blockedPlatforms.includes(siteId)) return blockPage("platform");
     if (inWindow(cfg.bedtime)) return blockPage("bedtime");
     const url = new URL(location.href);
@@ -762,7 +764,7 @@ if (!data.pinHash) {
     if (onFyp) {
       if (!cfg.forYou.enabled) {
         const landing = noAccountHome() || (site.safeLanding && new URL(site.safeLanding, url).href);
-        if (landing && !isSamePage(landing, url) && !bouncedRecently()) return location.replace(landing);
+        if (landing && !isSamePage(landing, url) && !bouncedRecently()) return leaveTo(landing);
         return blockPage("disableForYou");
       }
       const reason = forYouBlockReason();
@@ -775,7 +777,7 @@ if (!data.pinHash) {
 
     // Without an account the Following feed is just a log-in prompt; go to the app's own home instead.
     const home = noAccountHome();
-    if (home && site.safeLanding && isSamePage(site.safeLanding, url) && !bouncedRecently()) return location.replace(home);
+    if (home && site.safeLanding && isSamePage(site.safeLanding, url) && !bouncedRecently()) return leaveTo(home);
 
     for (const [key, patterns] of Object.entries(site.paths || {})) {
       if (key === "disableForYou" || !cfg[key]) continue;
@@ -790,14 +792,18 @@ if (!data.pinHash) {
     return cfg.blockAccounts && globalThis.SafeScrollPlatform && SafeScrollPlatform.homeURL || null;
   }
 
-  // Stops a redirect loop if a site sends its landing page straight back to a blocked feed.
+  // Stops a redirect loop if a site sends its landing page straight back to a blocked feed:
+  // the third redirect away from the same page within 10 seconds shows the blocked screen instead.
   function bouncedRecently() {
     try {
-      const last = Number(sessionStorage.getItem("safescroll-bounce") || 0);
-      sessionStorage.setItem("safescroll-bounce", String(Date.now()));
-      return Date.now() - last < 4000;
+      const key = "safescroll-bounce:" + location.pathname, now = Date.now();
+      const log = JSON.parse(sessionStorage.getItem(key) || "[]").filter(t => now - t < 10000);
+      log.push(now);
+      sessionStorage.setItem(key, JSON.stringify(log));
+      return log.length > 2;
     } catch { return false; }
   }
+  function leaveTo(target) { leaving = true; location.replace(target); }
 
   function isSamePage(target, url) {
     const t = new URL(target, url);

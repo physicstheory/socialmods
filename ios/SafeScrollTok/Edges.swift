@@ -61,12 +61,12 @@ final class EdgeSampler: ObservableObject {
 
     private func update(top: UIImage?, bottom: UIImage?) {
         busySince = nil
-        if let top {
+        if let top = top?.softened() {
             self.top = top
             let dark = top.isMostlyDark
             if AppModel.shared.topIsDark != dark { AppModel.shared.topIsDark = dark }
         }
-        if let bottom { self.bottom = bottom }
+        if let bottom = bottom?.softened() { self.bottom = bottom }
     }
 }
 
@@ -87,7 +87,7 @@ struct EdgeStrips: View {
 
     @ViewBuilder private func strip(_ image: UIImage?) -> some View {
         if let image {
-            Image(uiImage: image).resizable().interpolation(.none)
+            Image(uiImage: image).resizable().interpolation(.high)
         } else {
             Color(uiColor: .systemBackground)
         }
@@ -95,6 +95,18 @@ struct EdgeStrips: View {
 }
 
 extension UIImage {
+    /// The row squeezed to a few pixels wide (averaging as it goes), so thin details like a line or
+    /// a logo's edge don't turn into stripes when stretched, while the colours still line up with the page.
+    func softened(width: Int = 24) -> UIImage? {
+        guard let cg = cgImage,
+              let ctx = CGContext(data: nil, width: width, height: 1, bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
+        else { return nil }
+        ctx.interpolationQuality = .high
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: width, height: 1))
+        return ctx.makeImage().map { UIImage(cgImage: $0) }
+    }
+
     /// Average brightness of the image, judged the way the eye sees it.
     var isMostlyDark: Bool {
         guard let cg = cgImage else { return false }

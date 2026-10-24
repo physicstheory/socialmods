@@ -122,30 +122,71 @@
       });
     }
 
+    // Record what goes wrong while the web app starts, so a failure can be fixed. Addresses are kept
+    // without their ?query part (which can hold sign-in tokens).
     const errors = [];
-    const note = msg => { const m = String(msg).slice(0, 220); if (m && errors[errors.length - 1] !== m) errors.push(m); if (errors.length > 8) errors.shift(); };
-    addEventListener("error", e => note((e.message || (e.target && e.target.src ? "Couldn't load " + e.target.src : "error")) +
+    const note = msg => { const m = String(msg).slice(0, 240); if (m && errors[errors.length - 1] !== m) errors.push(m); if (errors.length > 14) errors.shift(); };
+    const where = url => { try { const u = new URL(url, location.href); return u.host + u.pathname; } catch { return String(url).split("?")[0]; } };
+    addEventListener("error", e => note((e.message || (e.target && (e.target.src || e.target.href) ? "Couldn't load " + where(e.target.src || e.target.href) : "error")) +
       (e.filename ? " @ " + e.filename.split("/").pop().split("?")[0] + ":" + e.lineno : "")), true);
     addEventListener("unhandledrejection", e => note("Promise: " + (e.reason && (e.reason.stack || e.reason.message) || e.reason)));
     const consoleError = console.error;
     console.error = function (...args) { note("console: " + args.map(a => (a && (a.message || a.stack)) || String(a)).join(" ")); return consoleError.apply(this, args); };
+    const realFetch = window.fetch;
+    window.fetch = function (input, init) {
+      const url = typeof input === "string" ? input : input && input.url;
+      return realFetch.apply(this, arguments).then(res => { if (res.status >= 400) note(`fetch ${res.status} ${where(url)}`); return res; },
+        err => { note(`fetch failed ${where(url)}: ${err && err.message}`); throw err; });
+    };
+    const xhrOpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function (method, url) {
+      this.addEventListener("loadend", () => { if (this.status === 0 || this.status >= 400) note(`xhr ${this.status || "failed"} ${where(url)}`); });
+      return xhrOpen.apply(this, arguments);
+    };
+    const swRegister = navigator.serviceWorker && navigator.serviceWorker.register;
+    if (swRegister) navigator.serviceWorker.register = function (url) { note("service worker requested: " + where(url)); return swRegister.apply(this, arguments); };
+
+    function report() {
+      const missing = ["WebAssembly", "SharedArrayBuffer", "OffscreenCanvas", "VideoDecoder", "VideoEncoder", "AudioDecoder",
+        "MediaRecorder", "RTCPeerConnection", "indexedDB", "BroadcastChannel", "CompressionStream", "WebGL2RenderingContext", "PushManager"]
+        .filter(k => !(k in window));
+      if (!(navigator.locks)) missing.push("navigator.locks");
+      if (!window.crossOriginIsolated) missing.push("crossOriginIsolated");
+      const page = ((document.body && document.body.innerText) || "").match(/error id:?\s*\S+|version:?\s*\S+/gi) || [];
+      return [
+        "SafeTok Snapchat report",
+        "Page: " + where(location.href) + (page.length ? " · " + page.join(" · ") : ""),
+        "Browser: " + navigator.userAgent.replace(/^Mozilla\/5\.0 /, "") + " · layout " + layout,
+        "Missing: " + (missing.join(", ") || "none"),
+        ...(errors.length ? errors : ["No errors were recorded."])
+      ];
+    }
 
     let shown = false;
     setInterval(() => {
-      if (shown || !document.body || !/something went wrong/i.test(document.body.textContent || "")) return;
+      if (shown || !document.body || !/something went wrong|error id/i.test(document.body.textContent || "")) return;
       shown = true;
+      const lines = report();
       const host = document.createElement("div");
       host.style.cssText = "position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:2147483647";
       const shadow = host.attachShadow({ mode: "closed" });
       shadow.innerHTML = `<style>
-        .p{font:13px/1.4 -apple-system,system-ui,sans-serif;background:rgba(20,18,23,.94);color:#fff;border-radius:16px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
-        b{display:block;font-size:14px;margin-bottom:4px} ul{margin:6px 0 10px;padding-left:16px;max-height:30vh;overflow:auto;font:11px/1.35 ui-monospace,Menlo,monospace;color:#d6d3dc;word-break:break-word}
-        .r{display:flex;gap:8px} button{font:600 13px -apple-system,system-ui;border:0;border-radius:99px;padding:8px 14px}
+        .p{font:13px/1.4 -apple-system,system-ui,sans-serif;background:rgba(20,18,23,.95);color:#fff;border-radius:16px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+        b{display:block;font-size:14px;margin-bottom:4px} ul{margin:6px 0 10px;padding-left:16px;max-height:34vh;overflow:auto;font:11px/1.35 ui-monospace,Menlo,monospace;color:#d6d3dc;word-break:break-word;-webkit-user-select:text;user-select:text}
+        .r{display:flex;flex-wrap:wrap;gap:8px} button{font:600 13px -apple-system,system-ui;border:0;border-radius:99px;padding:8px 14px}
         .a{background:#fe2c55;color:#fff} .c{background:#3a3640;color:#fff}</style>
-        <div class="p"><b>SafeTok: Snapchat hit a problem</b>Take a screenshot of this box and send it to get it fixed.
-        <ul>${(errors.length ? errors : ["No error details were reported."]).map(m => `<li>${m.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]))}</li>`).join("")}</ul>
-        <div class="r"><button class="a" id="again">Try again</button><button class="c" id="close">Close</button></div></div>`;
+        <div class="p"><b>SafeTok: Snapchat hit a problem</b>Tap Copy details and paste them to Claude to get this fixed.
+        <ul>${lines.map(m => `<li>${m.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]))}</li>`).join("")}</ul>
+        <div class="r"><button class="a" id="copy">Copy details</button><button class="c" id="again">Try again</button>
+        <button class="c" id="mobile">Snapchat home</button><button class="c" id="close">Close</button></div></div>`;
+      shadow.getElementById("copy").onclick = e => {
+        const text = report().join("\n");
+        const done = () => { e.target.textContent = "Copied ✓"; };
+        (navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(text) : Promise.reject())
+          .then(done, () => { const ta = document.createElement("textarea"); ta.value = text; shadow.appendChild(ta); ta.select(); try { document.execCommand("copy"); done(); } catch (err) { /* select manually */ } ta.remove(); });
+      };
       shadow.getElementById("again").onclick = () => location.reload();
+      shadow.getElementById("mobile").onclick = () => { location.href = "https://www.snapchat.com/"; };
       shadow.getElementById("close").onclick = () => host.remove();
       document.documentElement.appendChild(host);
     }, 1500);

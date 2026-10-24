@@ -25,6 +25,9 @@
       onStartup: { addListener() {} }
     }
   };
+  globalThis.SafeScrollPlatform = Object.assign(globalThis.SafeScrollPlatform || {}, {
+    homeURL: "safescroll://app/_app/home.html" // approved creators, used when no account is allowed
+  });
   globalThis.SafeScrollNative = {
     isApp: true,
     sha256: s => call({ op: "sha256", input: String(s) }),

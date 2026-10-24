@@ -75,17 +75,27 @@
     document.documentElement?.classList.toggle("safescroll-fyp", onFyp && cfg.forYou.enabled);
     if (onFyp) {
       if (!cfg.forYou.enabled) {
-        if (site.safeLanding && !isSamePage(site.safeLanding, url)) return location.replace(new URL(site.safeLanding, url).href);
+        const landing = noAccountHome() || (site.safeLanding && new URL(site.safeLanding, url).href);
+        if (landing && !isSamePage(landing, url)) return location.replace(landing);
         return blockPage("disableForYou");
       }
       const reason = forYouBlockReason();
       if (reason) return blockPage(reason);
     }
 
+    // Without an account the Following feed is just a log-in prompt; go to the app's own home instead.
+    const home = noAccountHome();
+    if (home && site.safeLanding && isSamePage(site.safeLanding, url)) return location.replace(home);
+
     for (const [key, patterns] of Object.entries(site.paths || {})) {
       if (key === "disableForYou" || !cfg[key]) continue;
       if (patterns.some(re => re.test(url.pathname))) return blockPage(key);
     }
+  }
+
+  // The iPhone app has its own home page (approved creators) for when no account is allowed.
+  function noAccountHome() {
+    return cfg.blockAccounts && globalThis.SafeScrollPlatform && SafeScrollPlatform.homeURL || null;
   }
 
   function isSamePage(target, url) {
@@ -221,13 +231,27 @@
   }
 
   // Close "open the app" pop-ups (press "Not now") and hide buttons that open the app or sell coins.
+  // Without an account allowed, also hide Log in / Sign up buttons.
+  const ACCOUNT_BUTTONS = [/^log in$/i, /^sign up$/i, /^log in or sign up$/i, /^sign in$/i];
   function handleNags() {
-    const n = site.nags;
-    if (!n) return;
+    const n = site.nags || { hide: [], dismiss: [], dismissWithin: /$^/ };
+    const hide = cfg.blockAccounts ? [...n.hide, ...ACCOUNT_BUTTONS] : n.hide;
+    if (!hide.length && !n.dismiss.length) return;
+    // Labels can sit in plain divs/spans, so match on text and hide the clickable thing around it.
+    const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const text = node.nodeValue.trim();
+      if (!text || text.length > 40 || !hide.some(re => re.test(text))) continue;
+      const el = node.parentElement;
+      if (!el || el.closest("#safescroll-cog,#safescroll-settings,#safescroll-blocked")) continue;
+      const target = el.closest("a,button,[role='button'],[role='link']") ||
+        (el.parentElement && el.parentElement !== document.body ? el.parentElement : el);
+      target.classList.add("safescroll-removed");
+    }
     for (const el of document.querySelectorAll("button,a,[role='button'],[role='link']")) {
       const text = (el.innerText || el.textContent || "").trim();
       if (!text || text.length > 40) continue;
-      if (n.hide.some(re => re.test(text))) { el.classList.add("safescroll-removed"); continue; }
+      if (hide.some(re => re.test(text))) { el.classList.add("safescroll-removed"); continue; }
       if (!el.dataset.safescrollNag && n.dismiss.some(re => re.test(text))) {
         for (let box = el.parentElement, i = 0; box && i < 10; box = box.parentElement, i++) {
           if (n.dismissWithin.test(box.innerText || "")) { el.dataset.safescrollNag = "1"; el.click(); break; }

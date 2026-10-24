@@ -1,12 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <defs>
     <path id="ghost" d="M262 470 C262 300 372 196 512 196 C652 196 762 300 762 470 L762 742 Q720 812 678 742 Q637 672 595 742 Q553 812 512 742 Q470 672 429 742 Q387 812 345 742 Q304 672 262 742 Z"/>
-    <radialGradient id="bg" cx="50%" cy="38%" r="75%">
-      <stop offset="0" stop-color="#1b1b1f"/><stop offset="1" stop-color="#000"/>
-    </radialGradient>
   </defs>
-  <rect width="1024" height="1024" fill="url(#bg)"/>
-  <use href="#ghost" fill="#25F4EE" transform="translate(-22 -16)"/>
-  <use href="#ghost" fill="#FE2C55" transform="translate(22 16)"/>
-  <use href="#ghost" fill="#FFFC00"/>
+  <rect width="1024" height="1024" fill="#ffffff"/>
+  <use href="#ghost" fill="#25F4EE" transform="translate(-24 -18)"/>
+  <use href="#ghost" fill="#FE2C55" transform="translate(24 18)"/>
+  <use href="#ghost" fill="#FFFC00" stroke="#111111" stroke-width="18" stroke-linejoin="round"/>
 </svg>

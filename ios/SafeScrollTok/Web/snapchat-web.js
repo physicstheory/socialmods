@@ -12,6 +12,9 @@
     if (location.hostname === "www.snapchat.com" && !location.pathname.startsWith("/web")) return;
   }
   const layout = window.__safescrollSnapLayout || "phone";
+  // The web app itself: web.snapchat.com (old address) or www.snapchat.com/web/ (where it lives now).
+  const isWebApp = location.hostname === "web.snapchat.com" || (location.hostname === "www.snapchat.com" && location.pathname.startsWith("/web"));
+  let panesActive = false;
 
   const define = (obj, key, get) => { try { Object.defineProperty(obj, key, { get, configurable: true }); } catch (e) { /* leave it */ } };
   define(Navigator.prototype, "platform", () => "MacIntel");
@@ -81,8 +84,139 @@
         applyViewport();
       }
     };
-    addEventListener("load", () => setTimeout(fitWideScreens, 1500));
-    setTimeout(fitWideScreens, 8000);
+    if (isWebApp) {
+      phonePanes();
+      setTimeout(() => { if (!panesActive) fitWideScreens(); }, 10000);
+    } else {
+      addEventListener("load", () => setTimeout(fitWideScreens, 1500));
+      setTimeout(fitWideScreens, 8000);
+    }
+  }
+
+  // Snapchat's web app puts its columns side by side (chat list, chat, camera). On a phone each column
+  // becomes its own full-width screen, like the real app: swipe between them, opening a chat slides to
+  // it, and the "‹" tab on the left edge goes back to the list. It works from the page's layout rather than Snapchat's (changing)
+  // class names: it looks for the full-screen row whose children stand side by side.
+  function phonePanes() {
+    const css = document.createElement("style");
+    css.textContent = `
+      [data-safetok-panes]{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;
+        overflow-x:auto!important;overflow-y:hidden!important;scroll-snap-type:x mandatory;scroll-behavior:smooth;
+        width:100vw!important;max-width:100vw!important;-webkit-overflow-scrolling:touch;scrollbar-width:none;overscroll-behavior-x:contain}
+      [data-safetok-panes]::-webkit-scrollbar{display:none}
+      [data-safetok-pane]{flex:0 0 100vw!important;width:100vw!important;min-width:100vw!important;max-width:100vw!important;
+        scroll-snap-align:start;scroll-snap-stop:always;box-sizing:border-box!important}
+      [data-safetok-rail]{flex:0 0 auto!important;scroll-snap-align:none}
+      #safetok-back{position:fixed;z-index:2147483646;top:50%;left:0;transform:translateY(-50%);width:26px;height:58px;
+        border-radius:0 14px 14px 0;border:0;background:rgba(20,18,23,.5);color:#fff;font:600 22px/58px -apple-system,system-ui;
+        text-align:center;padding:0 2px 0 0;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+      #safetok-back[hidden]{display:none}`;
+    (function add() { const root = document.head || document.documentElement; if (root) root.appendChild(css); else setTimeout(add, 10); })();
+
+    let row = null, panes = [];
+    const back = document.createElement("button");
+    back.id = "safetok-back"; back.textContent = "‹"; back.hidden = true; back.setAttribute("aria-label", "Back to chats");
+    back.addEventListener("click", () => show(0));
+
+    function find() {
+      // The layout viewport, not innerWidth/innerHeight, which grow when a too-wide page is zoomed out.
+      const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight || innerHeight;
+      let found = null;
+      (function walk(el, depth) {
+        if (found || !el || depth > 16) return;
+        for (const c of el.children) {
+          if (found) return;
+          if (c === back || c.tagName === "SCRIPT" || c.tagName === "STYLE") continue;
+          const r = c.getBoundingClientRect();
+          if (r.height < vh * 0.6 || r.width < vw * 0.85) continue;
+          const kids = [...c.children].filter(k => { const kr = k.getBoundingClientRect(); return kr.height > vh * 0.5 && kr.width > 40; });
+          const lefts = new Set(kids.map(k => Math.round(k.getBoundingClientRect().left / 8)));
+          if (kids.length >= 2 && lefts.size >= 2) { found = { row: c, kids }; return; }
+          walk(c, depth + 1);
+        }
+      })(document.body, 0);
+      return found;
+    }
+
+    function current() {
+      let best = 0, dist = Infinity;
+      panes.forEach((p, i) => { const d = Math.abs(p.getBoundingClientRect().left); if (d < dist) { dist = d; best = i; } });
+      return best;
+    }
+    function show(i) {
+      const p = panes[Math.max(0, Math.min(i, panes.length - 1))];
+      if (p) p.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
+    }
+    function update() { back.hidden = current() === 0; }
+
+    function setUp(found) {
+      row = found.row;
+      row.setAttribute("data-safetok-panes", "");
+      panes = [];
+      for (const k of found.kids) {
+        if (k.getBoundingClientRect().width <= 96) k.setAttribute("data-safetok-rail", "");
+        else { k.setAttribute("data-safetok-pane", ""); panes.push(k); }
+      }
+      if (panes.length < 2) { row.removeAttribute("data-safetok-panes"); row = null; return; }
+      panesActive = true;
+      row.addEventListener("scroll", () => requestAnimationFrame(update), { passive: true });
+      if (!back.isConnected) (document.body || document.documentElement).appendChild(back);
+      row.scrollLeft = 0;
+      update();
+    }
+
+    // Opening a chat in the list slides to it: when the address changes, or the chat column changes
+    // just after a tap in the list.
+    let lastPath = location.pathname;
+    const onRoute = () => {
+      if (location.pathname === lastPath) return;
+      const deeper = location.pathname.length > lastPath.length;
+      lastPath = location.pathname;
+      if (row && deeper && current() === 0) setTimeout(() => show(1), 200);
+    };
+    for (const m of ["pushState", "replaceState"]) {
+      const orig = history[m];
+      history[m] = function () { const r = orig.apply(this, arguments); setTimeout(onRoute, 0); return r; };
+    }
+    addEventListener("popstate", () => { lastPath = location.pathname; if (row) show(0); });
+    document.addEventListener("click", e => {
+      if (!row || !panes[0] || !panes[1] || !panes[0].contains(e.target) || current() !== 0) return;
+      if (e.target.closest("input,textarea,[contenteditable='true'],[role='searchbox']")) return;
+      if (!e.target.closest("a,button,li,[role='button'],[role='listitem'],[role='row'],[role='link'],[tabindex]")) return;
+      const watch = new MutationObserver(() => { watch.disconnect(); show(1); });
+      watch.observe(panes[1], { childList: true, subtree: true });
+      setTimeout(() => watch.disconnect(), 1200);
+    }, true);
+
+    // Find the columns once the app has drawn them, and again if it redraws.
+    let pending = false;
+    const check = () => {
+      pending = false;
+      if (row && row.isConnected) return;
+      row = null; panes = []; panesActive = false; back.hidden = true;
+      const found = find();
+      if (found) setUp(found);
+    };
+    new MutationObserver(() => { if (!pending) { pending = true; setTimeout(check, 400); } })
+      .observe(document, { childList: true, subtree: true });
+    addEventListener("resize", () => { if (row) row.scrollLeft = panes[current()] ? panes[current()].offsetLeft : 0; });
+
+    // For "Copy page report": how the page is laid out (sizes and tags only, no text).
+    window.__safetokLayout = () => {
+      const out = [];
+      (function walk(el, depth) {
+        if (!el || depth > 6 || out.length > 40) return;
+        for (const c of el.children) {
+          const r = c.getBoundingClientRect();
+          if (r.height < (document.documentElement.clientHeight || innerHeight) * 0.4 || c === back) continue;
+          const cls = typeof c.className === "string" ? c.className.split(/\s+/)[0].slice(0, 18) : "";
+          const cs = getComputedStyle(c);
+          out.push(`${"·".repeat(depth)}${c.tagName.toLowerCase()}${cls ? "." + cls : ""} ${Math.round(r.width)}x${Math.round(r.height)} ${cs.display}${cs.display.includes("flex") ? "/" + cs.flexDirection : ""}`);
+          walk(c, depth + 1);
+        }
+      })(document.body, 0);
+      return `panes ${panesActive ? panes.length : "not found"} | ` + out.join(" | ");
+    };
   }
 
   // Text sized for a phone, and no sideways wobble.
@@ -170,6 +304,7 @@
         "Page: " + where(location.href) + (page.length ? " · " + page.join(" · ") : ""),
         "Browser: " + navigator.userAgent.replace(/^Mozilla\/5\.0 /, "") + " · layout " + layout,
         "Missing: " + (missing.join(", ") || "none"),
+        ...(window.__safetokLayout ? ["Layout: " + window.__safetokLayout()] : []),
         ...(errors.length ? errors : ["No errors were recorded."])
       ];
     }

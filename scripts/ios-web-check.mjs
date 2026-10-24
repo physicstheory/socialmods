@@ -137,7 +137,7 @@ await snapBroken.waitForFunction(() => [...document.documentElement.children].so
 await snapBroken.close();
 
 // The stand-ins also apply where Snapchat's web app lives now, www.snapchat.com/web/.
-await ctx.route("https://www.snapchat.com/web/**", r => r.fulfill({ contentType: "text/html", body: "<!doctype html><html><head></head><body>Snapchat</body></html>" }));
+await ctx.route("https://www.snapchat.com/web/", r => r.fulfill({ contentType: "text/html", body: "<!doctype html><html><head></head><body>Snapchat</body></html>" }));
 const snapNew = track(await ctx.newPage());
 await snapNew.addInitScript(() => { delete window.Notification; Object.defineProperty(Navigator.prototype, "serviceWorker", { get: () => undefined, configurable: true }); });
 await snapNew.addInitScript({ path: path.join(appRoot, "snapchat-web.js") });
@@ -145,6 +145,33 @@ await snapNew.goto("https://www.snapchat.com/web/");
 check(await snapNew.evaluate(() => Notification.permission === "denied" && typeof navigator.serviceWorker.register === "function"),
   "notification and service worker stand-ins at www.snapchat.com/web/");
 await snapNew.close();
+
+// On a phone, the web app's side-by-side columns become full-width screens you swipe between.
+await ctx.route("https://www.snapchat.com/web/app", r => r.fulfill({ contentType: "text/html", body: `<!doctype html><html><head>
+  <style>html,body{margin:0;height:100%}#root{display:flex;height:100vh;width:100vw}nav{width:64px;background:#222}
+  #list{min-width:360px;background:#fffbe0;overflow:auto}#chat{flex:1;min-width:500px;background:#eef}#cam{min-width:400px;background:#111}
+  li{padding:14px;border-bottom:1px solid #ddd;list-style:none;cursor:pointer}</style></head><body>
+  <div id="root"><nav></nav><section id="list"><ul style="margin:0;padding:0">${["Mia", "Sam", "Jo"].map((n, i) =>
+    `<li role="button" onclick="history.pushState({}, '', '/web/c${i}'); document.getElementById('chat').textContent = 'Chat with ${n}'">${n}</li>`).join("")}</ul></section>
+  <main id="chat">Pick a chat</main><aside id="cam">Camera</aside></div></body></html>` }));
+const snapPhone = track(await ctx.newPage());
+await snapPhone.setViewportSize({ width: 393, height: 852 });
+await snapPhone.addInitScript(() => { window.__safescrollSnapLayout = "phone"; });
+await snapPhone.addInitScript({ path: path.join(appRoot, "snapchat-web.js") });
+await snapPhone.goto("https://www.snapchat.com/web/app");
+await snapPhone.waitForSelector("[data-safetok-panes]", { timeout: 5000 }).catch(() => {});
+const widths = await snapPhone.$$eval("[data-safetok-pane]", ps => ps.map(p => Math.round(p.getBoundingClientRect().width)));
+check(widths.length === 3 && widths.every(w => w === 393), `Snapchat columns become full-width phone screens (${widths.join(", ")})`);
+if (shots) await snapPhone.screenshot({ path: path.join(shotsDir, "snap-phone-list.png") });
+await snapPhone.click("li >> text=Sam");
+await snapPhone.waitForFunction(() => Math.abs(document.getElementById("chat").getBoundingClientRect().left) < 2, null, { timeout: 3000 })
+  .then(() => check(true, "opening a chat slides to it"), () => check(false, "opening a chat slides to it"));
+check(await snapPhone.evaluate(() => !document.getElementById("safetok-back").hidden), "back button shows on the chat");
+if (shots) await snapPhone.screenshot({ path: path.join(shotsDir, "snap-phone-chat.png") });
+await snapPhone.click("#safetok-back");
+await snapPhone.waitForFunction(() => Math.abs(document.getElementById("list").getBoundingClientRect().left) < 2, null, { timeout: 3000 })
+  .then(() => check(true, "back button returns to the chat list"), () => check(false, "back button returns to the chat list"));
+await snapPhone.close();
 if (shots) await home.screenshot({ path: path.join(shotsDir, "14b-app-home-accounts.png") });
 await settings.evaluate(() => chrome.storage.local.set({ region: "AU" }));
 

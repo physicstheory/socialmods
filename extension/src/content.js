@@ -181,9 +181,11 @@
   }
 
   function lockFollowButtons() {
-    if (!cfg || !cfg.friendAllowlistOnly || !site.followText.length) return;
+    if (!cfg || !(cfg.friendAllowlistOnly || cfg.blockAccounts) || !site.followText.length) return;
     const profile = site.profile(location.pathname);
-    const allowed = profile && cfg.friendAllowlist.includes(decodeURIComponent(profile).toLowerCase());
+    // No account allowed: following is impossible, so Follow/Message are hidden everywhere.
+    const allowed = !cfg.blockAccounts && (!cfg.friendAllowlistOnly ||
+      (profile && cfg.friendAllowlist.includes(decodeURIComponent(profile).toLowerCase())));
     document.querySelectorAll("button,[role='button'],a[role='link']").forEach(b => {
       const label = (b.innerText || b.getAttribute("aria-label") || "").trim();
       if (!label || label.length > 20) return;

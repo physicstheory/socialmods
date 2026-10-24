@@ -38,7 +38,7 @@ await ctx.route("https://www.tiktok.com/**", r => {
   const u = new URL(r.request().url());
   const posts = ["@bakewithmia · 3 ingredient cookies 🍪 #baking", "@stuntkid · trying the #blackoutchallenge 😵", "@sciencesam · elephant toothpaste #stem"];
   const nag = `<a href="tiktok://open" class="openapp">Open app</a><div class="coins"><span>Get Coins</span></div>
-    <div class="textlogin"><button><span>Log in</span></button></div>
+    <div class="textlogin"><button><span>Log in</span></button></div><button class="followbtn">Follow</button>
     <div id="nag" style="position:fixed;inset:0;background:rgba(0,0,0,.6)"><div><h2>Get the full app experience</h2>
     <a href="tiktok://open">Open TikTok</a><button onclick="document.getElementById('nag').remove()">Not now</button></div></div>`;
   const login = nag + `<a data-e2e="top-login-button" href="/login" style="display:block;margin:12px;padding:10px;background:#fe2c55;color:#fff;text-align:center;border-radius:8px">Log in</a>`;
@@ -94,6 +94,7 @@ check(await page.$eval('[data-e2e="top-login-button"]', e => getComputedStyle(e)
 check(await page.evaluate(() => !!document.getElementById("safescroll-cog")), "settings cog shown");
 check(await page.evaluate(() => !document.getElementById("nag")), "'Get the full app experience' pop-up dismissed (Not now)");
 check(await page.$eval(".openapp", e => getComputedStyle(e).display === "none"), "'Open app' button hidden");
+check(await page.$eval(".followbtn", e => getComputedStyle(e).display === "none"), "Follow hidden with no account allowed (14, Australia)");
 check(await page.$eval(".coins span", e => !e.offsetParent), "'Get Coins' (plain div) hidden");
 check(await page.$eval(".textlogin button", e => getComputedStyle(e).display === "none"), "'Log in' text button hidden under 16 in Australia");
 if (shots) await page.screenshot({ path: path.join(shotDir, "3-feed-filtered.png") });

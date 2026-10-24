@@ -86,6 +86,7 @@ final class BundleSchemeHandler: NSObject, WKURLSchemeHandler {
         case "json": return "application/json"
         case "svg": return "image/svg+xml"
         case "png": return "image/png"
+        case "ttf": return "font/ttf"
         default: return "application/octet-stream"
         }
     }

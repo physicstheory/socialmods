@@ -96,6 +96,20 @@ struct RootView: View {
     }
 }
 
+/// "SafeTok" in its own font (Lilita One) with the icon's cyan and pink offset.
+struct Wordmark: View {
+    var size: CGFloat
+    var body: some View {
+        let text = Text("SafeTok").font(.custom("LilitaOne", size: size))
+        ZStack {
+            text.foregroundStyle(Color(red: 0.145, green: 0.957, blue: 0.933)).offset(x: -size / 22, y: -size / 30)
+            text.foregroundStyle(Color(red: 0.996, green: 0.173, blue: 0.333)).offset(x: size / 22, y: size / 30)
+            text.foregroundStyle(.primary)
+        }
+        .accessibilityElement().accessibilityLabel("SafeTok")
+    }
+}
+
 /// Shown once after setup.
 struct WelcomeView: View {
     @EnvironmentObject var model: AppModel
@@ -113,7 +127,10 @@ struct WelcomeView: View {
                     .resizable().frame(width: 108, height: 108)
                     .clipShape(RoundedRectangle(cornerRadius: 25, style: .continuous))
                     .shadow(color: pink.opacity(0.25), radius: 18, y: 8)
-                Text("Welcome to SafeTok").font(.largeTitle.bold()).multilineTextAlignment(.center)
+                VStack(spacing: 2) {
+                    Text("Welcome to").font(.title3.weight(.semibold)).foregroundStyle(.secondary)
+                    Wordmark(size: 48)
+                }
                 Text("TikTok, Snapchat, Instagram, Threads and Facebook in one place, with your family's rules built in.")
                     .multilineTextAlignment(.center).foregroundStyle(.secondary)
                 VStack(alignment: .leading, spacing: 16) {

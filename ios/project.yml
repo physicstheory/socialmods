@@ -29,6 +29,7 @@ targets:
       path: SafeScrollTok/Info.plist
       properties:
         CFBundleDisplayName: SafeTok
+        UIAppFonts: [LilitaOne-Regular.ttf]   # the SafeTok wordmark (SIL Open Font License, see Fonts/)
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIRequiresFullScreen: true

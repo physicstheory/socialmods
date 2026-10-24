@@ -29,6 +29,15 @@
       if (!el.dataset.iconDone) { el.insertAdjacentHTML("afterbegin", icon(el.dataset.icon)); el.dataset.iconDone = "1"; }
     });
     (scope || document).querySelectorAll("[data-brand]").forEach(el => { el.textContent = brand; });
+    // Inside the app, the name is set in SafeTok's own wordmark font.
+    if (brand !== "SafeScroll" && !document.getElementById("safetok-wordmark")) {
+      const style = document.createElement("style");
+      style.id = "safetok-wordmark";
+      style.textContent = '@font-face{font-family:"SafeTok Wordmark";src:url("/_app/fonts/LilitaOne-Regular.ttf") format("truetype")}' +
+        '[data-brand]{font-family:"SafeTok Wordmark",system-ui,sans-serif;font-weight:400;letter-spacing:.01em}' +
+        'h1 [data-brand],.brand [data-brand]{text-shadow:-1.5px -1px 0 #25f4ee,1.5px 1px 0 #fe2c55}';
+      (document.head || document.documentElement).appendChild(style);
+    }
     if (!scope && brand !== "SafeScroll") document.title = document.title.replace(/SafeScroll/g, brand);
   }
   root.SafeScrollIcons = { icon, hydrate, brand };

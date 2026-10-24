@@ -18,6 +18,10 @@ final class AppModel: ObservableObject {
     @Published var showSettings = false
     @Published var toast: String?
     @Published private(set) var config: [String: Any] = [:]
+    // Colours at the page's top and bottom edges, painted into the strips around it.
+    @Published var edgeTop: Color = .black
+    @Published var edgeBottom: Color = .black
+    @Published var topIsDark = true
     lazy var browser = Browser()
 
     var accountsAllowed: Bool { config["accountsAllowed"] as? Bool ?? false }
@@ -127,7 +131,12 @@ struct MainView: View {
         // Just TikTok's own mobile site, with its own bottom bar (Home, Friends, +, Inbox, Profile).
         // Swipe from the left edge to go back.
         WebViewHost(webView: browser.webView)
-            .background(Color.black.ignoresSafeArea())
+            // The strips under the clock and below the page take the page's own edge colours,
+            // so TikTok and Snapchat look edge-to-edge like their real apps.
+            .background {
+                VStack(spacing: 0) { model.edgeTop; model.edgeBottom }.ignoresSafeArea()
+            }
+            .preferredColorScheme(model.topIsDark ? .dark : .light)
         // Small cog for parent settings, top-right on every screen.
         .overlay(alignment: .topTrailing) {
             Button { model.showSettings = true } label: {
@@ -196,7 +205,10 @@ struct SettingsSheet: View {
                     ToolbarItem(placement: .navigationBarLeading) {
                         Menu {
                             Button { browser.load(AppModel.shared.startURL); dismiss() } label: { Label("Back to TikTok", systemImage: "play.rectangle") }
-                            Button { browser.goHome(); dismiss() } label: { Label("Approved creators", systemImage: "person.2") }
+                            Button { browser.goHome(); dismiss() } label: { Label("SafeScroll home", systemImage: "house") }
+                            if !(AppModel.shared.config["blockedPlatforms"] as? [String] ?? []).contains("snapchat") {
+                                Button { browser.openSnapchat(); dismiss() } label: { Label("Snapchat", systemImage: "camera") }
+                            }
                             Button { browser.webView.reload(); dismiss() } label: { Label("Reload page", systemImage: "arrow.clockwise") }
                             Button("Sign out of TikTok", role: .destructive) { confirmSignOut = true }
                         } label: { Image(systemName: "ellipsis.circle") }

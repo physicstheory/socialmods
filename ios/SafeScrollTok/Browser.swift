@@ -8,6 +8,7 @@ enum Gate {
                               "tiktokcdn-us.com", "ttwstatic.com", "byteoversea.com", "ibytedtos.com",
                               "snapchat.com", "snap.com"] // Snapchat's own rules (chat, log in, Snap Map) are applied by the filter scripts
     /// Sign-in providers TikTok offers ("Continue with Apple / Google / Facebook / X / LINE / Kakao").
+    static let snapchatHosts = ["snapchat.com", "snap.com"]
     static let loginHosts = ["appleid.apple.com", "accounts.google.com", "facebook.com", "twitter.com", "x.com",
                              "access.line.me", "kauth.kakao.com", "accounts.kakao.com"]
 
@@ -15,6 +16,20 @@ enum Gate {
 
     static func matches(_ host: String, _ list: [String]) -> Bool {
         list.contains { host == $0 || host.hasSuffix("." + $0) }
+    }
+
+    /// Snapchat only opens from SafeScroll itself (home screen or settings menu), or from
+    /// a page that's already Snapchat — never by following a link out of TikTok.
+    static func check(_ url: URL, from current: URL?, accountsAllowed: Bool) -> Decision {
+        let host = url.host?.lowercased() ?? ""
+        if matches(host, snapchatHosts) {
+            let fromHost = current?.host?.lowercased() ?? ""
+            let fromApp = current == nil || current?.scheme == BundleSchemeHandler.scheme
+            if !fromApp && !matches(fromHost, snapchatHosts) {
+                return .block("Open Snapchat from SafeScroll's home screen or settings.")
+            }
+        }
+        return check(url, accountsAllowed: accountsAllowed)
     }
 
     static func check(_ url: URL, accountsAllowed: Bool) -> Decision {
@@ -129,6 +144,10 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
 
     func goHome() { load(Browser.homeURL) }
 
+    /// Opening Snapchat from SafeScroll (settings menu): through the home page's Snapchat section,
+    /// so the jump starts from a SafeScroll page.
+    func openSnapchat() { load(URL(string: "safescroll://app/_app/home.html#snap")!) }
+
     func signOut(then done: (() -> Void)? = nil) {
         let store = WKWebsiteDataStore.default()
         store.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast) {
@@ -150,7 +169,7 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
         guard let url = action.request.url else { return decisionHandler(.cancel) }
         // Embedded frames (players, captcha, sign-in widgets) are left alone; only whole-page moves are checked.
         if action.targetFrame?.isMainFrame == false { return decisionHandler(.allow) }
-        switch Gate.check(url, accountsAllowed: AppModel.shared.accountsAllowed) {
+        switch Gate.check(url, from: webView.url, accountsAllowed: AppModel.shared.accountsAllowed) {
         case .allow:
             decisionHandler(.allow)
         case .blockAccounts:
@@ -180,7 +199,7 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
         }
         // Everything else (share links, "open in new tab") loads in the main view.
         if let url {
-            switch Gate.check(url, accountsAllowed: AppModel.shared.accountsAllowed) {
+            switch Gate.check(url, from: webView.url, accountsAllowed: AppModel.shared.accountsAllowed) {
             case .allow: self.webView.load(action.request)
             case .blockAccounts: self.webView.load(URLRequest(url: blockedPageURL("blockAccounts")))
             case .block(let message): AppModel.shared.flash(message)

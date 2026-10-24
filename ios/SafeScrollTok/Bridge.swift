@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import SwiftUI
 import WebKit
 
 /// Answers the chrome.* shim's calls from web pages (see Web/chrome-shim.js).
@@ -39,6 +40,14 @@ final class Bridge: NSObject, WKScriptMessageHandlerWithReply {
         case "openSettings":
             DispatchQueue.main.async { AppModel.shared.showSettings = true }
             replyHandler(nil, nil)
+        case "edges":
+            let top = Bridge.rgb(body["top"] as? String), bottom = Bridge.rgb(body["bottom"] as? String)
+            DispatchQueue.main.async {
+                let model = AppModel.shared
+                if let top { model.edgeTop = Color(red: top.r, green: top.g, blue: top.b); model.topIsDark = top.isDark }
+                if let bottom { model.edgeBottom = Color(red: bottom.r, green: bottom.g, blue: bottom.b) }
+            }
+            replyHandler(nil, nil)
         case "open":
             if let url = (body["url"] as? String).flatMap(URL.init(string:)) {
                 DispatchQueue.main.async { AppModel.shared.browser.load(url) }
@@ -47,6 +56,18 @@ final class Bridge: NSObject, WKScriptMessageHandlerWithReply {
         default:
             replyHandler(nil, "unknown op \(op)")
         }
+    }
+}
+
+extension Bridge {
+    /// Parses "rgb(r, g, b)" / "rgba(r, g, b, a)" from getComputedStyle.
+    static func rgb(_ css: String?) -> (r: Double, g: Double, b: Double, isDark: Bool)? {
+        guard let css, let open = css.firstIndex(of: "("), let close = css.lastIndex(of: ")") else { return nil }
+        let parts = css[css.index(after: open)..<close].split(separator: ",")
+            .compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+        guard parts.count >= 3 else { return nil }
+        let (r, g, b) = (parts[0], parts[1], parts[2])
+        return (r / 255, g / 255, b / 255, 0.299 * r + 0.587 * g + 0.114 * b < 140)
     }
 }
 

@@ -71,7 +71,7 @@ jobs:
 
           # 4. The same page in plain Safari, for comparison
           xcrun simctl terminate "$UDID" "$BID" || true
-          xcrun simctl openurl "$UDID" "https://www.tiktok.com/foryou"; shot 04-safari-tiktok-foryou 25
+          xcrun simctl openurl "$UDID" "https://www.tiktok.com/foryou" || true; shot 04-safari-tiktok-foryou 25
           xcrun simctl terminate "$UDID" com.apple.mobilesafari || true
 
           # 5. Settings sheet (cog), unlocked
@@ -86,7 +86,7 @@ jobs:
           # 7. Snapchat
           run --seed-store "$S17" --welcome-done YES --open "https://www.snapchat.com/spotlight"; shot 10-app-snapchat-spotlight-17 20
           xcrun simctl terminate "$UDID" "$BID" || true
-          xcrun simctl openurl "$UDID" "https://www.snapchat.com/spotlight"; shot 11-safari-snapchat-spotlight 20
+          xcrun simctl openurl "$UDID" "https://www.snapchat.com/spotlight" || true; shot 11-safari-snapchat-spotlight 20
           xcrun simctl terminate "$UDID" com.apple.mobilesafari || true
           run --seed-store "$S14AU" --welcome-done YES --open "https://www.snapchat.com/add/nasa"; shot 12-app-snapchat-approved-account-14 18
           run --seed-store "$S14AU" --welcome-done YES --open "https://www.snapchat.com/spotlight"; shot 13-app-snapchat-spotlight-off-14 12

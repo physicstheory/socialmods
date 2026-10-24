@@ -61,12 +61,12 @@ final class EdgeSampler: ObservableObject {
 
     private func update(top: UIImage?, bottom: UIImage?) {
         busySince = nil
-        if let top = top?.softened() {
+        if let top = top?.edgeStrip() {
             self.top = top
             let dark = top.isMostlyDark
             if AppModel.shared.topIsDark != dark { AppModel.shared.topIsDark = dark }
         }
-        if let bottom = bottom?.softened() { self.bottom = bottom }
+        if let bottom = bottom?.edgeStrip() { self.bottom = bottom }
     }
 }
 
@@ -95,6 +95,38 @@ struct EdgeStrips: View {
 }
 
 extension UIImage {
+    /// What a strip shows for this row of the page: one flat colour when the row is nearly all one
+    /// colour (menus, plain pages, tab bars), so a stray line or icon edge can't smudge it; otherwise
+    /// the row softened (videos and photos).
+    func edgeStrip() -> UIImage? {
+        guard let cg = cgImage else { return nil }
+        let width = max(1, min(cg.width, 400))
+        var pixels = [UInt8](repeating: 0, count: width * 4)
+        let drawn = pixels.withUnsafeMutableBytes { buffer -> Bool in
+            guard let ctx = CGContext(data: buffer.baseAddress, width: width, height: 1, bitsPerComponent: 8,
+                                      bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else { return false }
+            ctx.interpolationQuality = .none
+            ctx.draw(cg, in: CGRect(x: 0, y: 0, width: width, height: 1))
+            return true
+        }
+        guard drawn else { return nil }
+        let bin = { (i: Int) in Int(pixels[i * 4] >> 4) << 8 | Int(pixels[i * 4 + 1] >> 4) << 4 | Int(pixels[i * 4 + 2] >> 4) }
+        var counts = [Int: Int]()
+        for i in 0..<width { counts[bin(i), default: 0] += 1 }
+        guard let top = counts.max(by: { $0.value < $1.value }), top.value * 10 >= width * 8 else { return softened() }
+        var sum = (r: 0, g: 0, b: 0)
+        for i in 0..<width where bin(i) == top.key {
+            sum.r += Int(pixels[i * 4]); sum.g += Int(pixels[i * 4 + 1]); sum.b += Int(pixels[i * 4 + 2])
+        }
+        let n = CGFloat(top.value * 255)
+        let colour = UIColor(red: CGFloat(sum.r) / n, green: CGFloat(sum.g) / n, blue: CGFloat(sum.b) / n, alpha: 1)
+        return UIGraphicsImageRenderer(size: CGSize(width: 1, height: 1)).image { ctx in
+            colour.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 1, height: 1))
+        }
+    }
+
     /// The row squeezed to a few pixels wide (averaging as it goes), so thin details like a line or
     /// a logo's edge don't turn into stripes when stretched, while the colours still line up with the page.
     func softened(width: Int = 24) -> UIImage? {

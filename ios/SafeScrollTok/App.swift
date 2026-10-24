@@ -170,6 +170,15 @@ struct MainView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
+        // Simulator/Xcode only (screenshots): --show-url prints the page address at the bottom.
+        .overlay(alignment: .bottom) {
+            if ProcessInfo.processInfo.arguments.contains("--show-url") {
+                Text(browser.currentURL?.absoluteString ?? "")
+                    .font(.caption2.monospaced()).lineLimit(2)
+                    .padding(6).background(.black.opacity(0.75)).foregroundStyle(.white)
+                    .padding(.bottom, 90)
+            }
+        }
         .animation(.easeInOut, value: model.toast)
         .sheet(isPresented: $model.showSettings) {
             SettingsSheet(browser: browser).preferredColorScheme(model.systemScheme)

@@ -57,8 +57,29 @@ enum Gate {
 /// asked for as Safari on a Mac. Web/snapchat-web.js then lays them out at the phone's width.
 enum SnapchatWeb {
     static let hosts = ["web.snapchat.com", "accounts.snapchat.com"]
-    static let userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15"
-    static func wants(_ url: URL) -> Bool { Gate.matches(url.host?.lowercased() ?? "", hosts) }
+    static let safari = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15"
+    static let chrome = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+
+    /// Which browser to look like and how to lay the page out: safari|chrome - phone|desktop.
+    /// Simulator/Xcode only, for finding what Snapchat accepts: --snap-web chrome-desktop
+    static let variant: String = {
+        let args = ProcessInfo.processInfo.arguments
+        if let i = args.firstIndex(of: "--snap-web"), i + 1 < args.count { return args[i + 1] }
+        return "safari-phone"
+    }()
+    static var userAgent: String { variant.hasPrefix("chrome") ? chrome : safari }
+    /// Desktop layout: the page is laid out like a laptop screen and scaled to fit (pinch to zoom).
+    static var desktopLayout: Bool { variant.hasSuffix("desktop") }
+
+    static func wants(_ url: URL) -> Bool {
+        let host = url.host?.lowercased() ?? ""
+        return Gate.matches(host, hosts) || (host == "www.snapchat.com" && url.path.lowercased().hasPrefix("/web"))
+    }
+
+    /// The page script, told which layout to use.
+    static var script: String {
+        "window.__safescrollSnapLayout = \"\(desktopLayout ? "desktop" : "phone")\";\n" + Resources.appFile("snapchat-web.js")
+    }
 }
 
 /// Native alert / confirm / prompt for web pages, plus camera and microphone access.
@@ -115,6 +136,7 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
 
     let webView: WKWebView
     @Published var canGoBack = false
+    @Published var currentURL: URL?
     @Published var popup: PopupItem?
     private(set) var hasLoaded = false
     /// The page SafeScroll itself just asked for, so it's let through even from a TikTok page.
@@ -122,6 +144,7 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
     /// Recent switches between the iPhone and desktop browser identity, to stop a site bouncing between them.
     private var identitySwitches: [Date] = []
     private var observation: NSKeyValueObservation?
+    private var urlObservation: NSKeyValueObservation?
 
     override init() {
         webView = WKWebView(frame: .zero, configuration: Browser.makeConfiguration())
@@ -134,6 +157,9 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
         SettingsStore.shared.register(webView, world: .page)
         observation = webView.observe(\.canGoBack, options: [.new]) { [weak self] view, _ in
             DispatchQueue.main.async { self?.canGoBack = view.canGoBack }
+        }
+        urlObservation = webView.observe(\.url, options: [.new]) { [weak self] view, _ in
+            DispatchQueue.main.async { self?.currentURL = view.url }
         }
     }
 
@@ -148,7 +174,7 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
         let scripts = config.userContentController
         scripts.addScriptMessageHandler(Bridge.shared, contentWorld: .defaultClient, name: "safescroll")
         scripts.addScriptMessageHandler(Bridge.shared, contentWorld: .page, name: "safescroll")
-        scripts.addUserScript(WKUserScript(source: Resources.appFile("snapchat-web.js"), injectionTime: .atDocumentStart,
+        scripts.addUserScript(WKUserScript(source: SnapchatWeb.script, injectionTime: .atDocumentStart,
                                            forMainFrameOnly: true, in: .page))
         scripts.addUserScript(WKUserScript(source: Resources.contentScript, injectionTime: .atDocumentStart,
                                            forMainFrameOnly: true, in: .defaultClient))
@@ -183,8 +209,16 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
 
     // MARK: Navigation
 
-    func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
-                 decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+    func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, preferences: WKWebpagePreferences,
+                 decisionHandler: @escaping (WKNavigationActionPolicy, WKWebpagePreferences) -> Void) {
+        if let url = action.request.url, SnapchatWeb.desktopLayout && SnapchatWeb.wants(url) {
+            preferences.preferredContentMode = .desktop
+        }
+        decide(webView, action) { decisionHandler($0, preferences) }
+    }
+
+    private func decide(_ webView: WKWebView, _ action: WKNavigationAction,
+                        decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         guard let url = action.request.url else { return decisionHandler(.cancel) }
         // Embedded frames (players, captcha, sign-in widgets) are left alone; only whole-page moves are checked.
         if action.targetFrame?.isMainFrame == false { return decisionHandler(.allow) }

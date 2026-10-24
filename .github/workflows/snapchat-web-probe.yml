@@ -1,0 +1,69 @@
+# Finds which browser identity Snapchat's web app (web.snapchat.com) accepts inside the iPhone app:
+# Safari or Chrome, laid out at phone width or laptop width. Each screenshot shows the page address
+# at the bottom. Results: releases/tag/snapchat-web-probe
+name: Snapchat web app probe
+
+on:
+  push:
+    paths: [".github/workflows/snapchat-web-probe.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build for the simulator
+        working-directory: ios
+        run: |
+          brew install xcodegen
+          xcodegen
+          set -o pipefail
+          xcodebuild build -project SafeScrollTok.xcodeproj -scheme SafeScrollTok -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO | tail -5
+
+      - name: Try each identity
+        working-directory: ios
+        run: |
+          set -x
+          APP=build/Build/Products/Debug-iphonesimulator/SafeScrollTok.app
+          BID=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist")
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['devices']
+          phones=[x for r,l in d.items() if 'iOS' in r for x in l if x['name'].startswith('iPhone')]
+          pro=[x for x in phones if 'Pro' in x['name'] and 'Max' not in x['name']]
+          print((pro or phones)[-1]['udid'])")
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time 9:41 --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4 || true
+          xcrun simctl install "$UDID" "$APP"
+          mkdir -p shots
+          seed() { printf '%s' "$1" | base64 | tr -d '\n'; }
+          PIN='"pinSalt":"s","pinHash":"1f884ca61b18b4dcde9cc304095322b1c5b15422400c4796cf0bbadbea5f00aa"'
+          S16=$(seed "{$PIN,\"age\":16,\"region\":\"AU\",\"overrides\":{}}")
+          for V in safari-phone safari-desktop chrome-phone chrome-desktop; do
+            xcrun simctl terminate "$UDID" "$BID" 2>/dev/null || true
+            # A fresh start each time, so one identity's cookies don't affect the next.
+            xcrun simctl uninstall "$UDID" "$BID" || true
+            xcrun simctl install "$UDID" "$APP"
+            xcrun simctl launch "$UDID" "$BID" --seed-store "$S16" --welcome-done YES --show-url --snap-web "$V" --open "https://web.snapchat.com/"
+            sleep 25
+            xcrun simctl io "$UDID" screenshot "shots/snapweb-$V.png"
+          done
+          ls -la shots
+
+      - name: Publish
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: ios
+        run: |
+          gh release delete snapchat-web-probe --cleanup-tag --yes || true
+          gh release create snapchat-web-probe shots/*.png --target "$GITHUB_SHA" --latest=false --prerelease \
+            --title "Snapchat web app probe" --notes "Which browser identity Snapchat's web app accepts inside the iPhone app."

@@ -29,6 +29,7 @@ jobs:
       - name: Install idb (simulator tapping)
         run: |
           brew tap facebook/fb
+          brew trust facebook/fb || true
           brew install idb-companion
           python3 -m pip install --user --break-system-packages fb-idb || python3 -m pip install --user fb-idb
           echo "$(python3 -m site --user-base)/bin" >> "$GITHUB_PATH"

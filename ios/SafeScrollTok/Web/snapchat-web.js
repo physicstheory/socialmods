@@ -4,8 +4,13 @@
 // out at the phone's width so it works like an app instead of a shrunken desktop page.
 // Runs in the page's own world; does nothing on other sites.
 (function () {
-  if (window.top !== window || !/^(web|accounts)\.snapchat\.com$|^www\.snapchat\.com$/.test(location.hostname)) return;
-  if (location.hostname === "www.snapchat.com" && !location.pathname.startsWith("/web")) return;
+  if (window.top !== window) return;
+  if (window.__safescrollSnapSticky) {
+    if (!/(^|\.)snapchat\.com$/.test(location.hostname)) return;
+  } else {
+    if (!/^(web|accounts)\.snapchat\.com$|^www\.snapchat\.com$/.test(location.hostname)) return;
+    if (location.hostname === "www.snapchat.com" && !location.pathname.startsWith("/web")) return;
+  }
   const layout = window.__safescrollSnapLayout || "phone";
 
   const define = (obj, key, get) => { try { Object.defineProperty(obj, key, { get, configurable: true }); } catch (e) { /* leave it */ } };

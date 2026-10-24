@@ -173,8 +173,8 @@ struct MainView: View {
         // Simulator/Xcode only (screenshots): --show-url prints the page address at the bottom.
         .overlay(alignment: .bottom) {
             if ProcessInfo.processInfo.arguments.contains("--show-url") {
-                Text(browser.currentURL?.absoluteString ?? "")
-                    .font(.caption2.monospaced()).lineLimit(2)
+                Text((browser.navigationLog + ["now: " + (browser.currentURL?.absoluteString ?? "")]).joined(separator: "\n"))
+                    .font(.system(size: 9, design: .monospaced)).lineLimit(16)
                     .padding(6).background(.black.opacity(0.75)).foregroundStyle(.white)
                     .padding(.bottom, 90)
             }

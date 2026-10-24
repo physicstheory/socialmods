@@ -47,14 +47,19 @@ jobs:
           seed() { printf '%s' "$1" | base64 | tr -d '\n'; }
           PIN='"pinSalt":"s","pinHash":"1f884ca61b18b4dcde9cc304095322b1c5b15422400c4796cf0bbadbea5f00aa"'
           S16=$(seed "{$PIN,\"age\":16,\"region\":\"AU\",\"overrides\":{}}")
-          for V in safari-phone safari-desktop chrome-phone chrome-desktop; do
+          LOGIN="https://accounts.snapchat.com/accounts/v2/login?continue=https%3A%2F%2Fweb.snapchat.com%2F"
+          n=0
+          for CASE in "safari-phone https://web.snapchat.com/" "safari-phone-sticky https://web.snapchat.com/" \
+                      "chrome-phone-sticky https://web.snapchat.com/" "chrome-desktop-sticky https://web.snapchat.com/" \
+                      "safari-phone-sticky $LOGIN" "chrome-phone-sticky $LOGIN"; do
+            set -- $CASE; V=$1; URL=$2; n=$((n+1))
             xcrun simctl terminate "$UDID" "$BID" 2>/dev/null || true
             # A fresh start each time, so one identity's cookies don't affect the next.
             xcrun simctl uninstall "$UDID" "$BID" || true
             xcrun simctl install "$UDID" "$APP"
-            xcrun simctl launch "$UDID" "$BID" --seed-store "$S16" --welcome-done YES --show-url --snap-web "$V" --open "https://web.snapchat.com/"
+            xcrun simctl launch "$UDID" "$BID" --seed-store "$S16" --welcome-done YES --show-url --snap-web "$V" --open "$URL"
             sleep 25
-            xcrun simctl io "$UDID" screenshot "shots/snapweb-$V.png"
+            xcrun simctl io "$UDID" screenshot "shots/snapweb-$n-$V.png"
           done
           ls -la shots
 

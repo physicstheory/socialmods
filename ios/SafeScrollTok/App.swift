@@ -277,6 +277,9 @@ struct SettingsSheet: View {
                                 Button { browser.openSnapchat(); dismiss() } label: { Label("Open Snapchat", systemImage: "camera") }
                             }
                             Button { browser.webView.reload(); dismiss() } label: { Label("Reload page", systemImage: "arrow.clockwise") }
+                            Button {
+                                browser.copyReport { dismiss(); AppModel.shared.flash("Report copied. Paste it to Claude.") }
+                            } label: { Label("Copy page report", systemImage: "doc.on.clipboard") }
                             Button("Sign out of all apps", role: .destructive) { confirmSignOut = true }
                         } label: { Image(systemName: "ellipsis.circle") }
                     }

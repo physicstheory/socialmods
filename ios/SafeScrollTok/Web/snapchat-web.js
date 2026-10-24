@@ -41,7 +41,7 @@
     return result;
   };
 
-  if (location.hostname === "web.snapchat.com") webAppSupport();
+  webAppSupport();
 
   if (layout === "phone") {
     const PHONE = "width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover";
@@ -97,6 +97,11 @@
   // web app expects them, so give it harmless stand-ins (notifications stay off). If it still fails,
   // show what went wrong so it can be fixed.
   function webAppSupport() {
+    if (location.hostname === "web.snapchat.com") standIns();
+    recordProblems();
+  }
+
+  function standIns() {
     if (!("Notification" in window)) {
       const Stub = function Notification() { throw new TypeError("Notifications are off in SafeTok"); };
       Stub.permission = "denied";
@@ -121,7 +126,9 @@
         throw err;
       });
     }
+  }
 
+  function recordProblems() {
     // Record what goes wrong while the web app starts, so a failure can be fixed. Addresses are kept
     // without their ?query part (which can hold sign-in tokens).
     const errors = [];
@@ -161,6 +168,9 @@
         ...(errors.length ? errors : ["No errors were recorded."])
       ];
     }
+
+    // SafeTok's "Copy page report" (settings menu) reads this.
+    Object.defineProperty(window, "__safetokReport", { value: report });
 
     let shown = false;
     setInterval(() => {

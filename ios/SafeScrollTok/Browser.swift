@@ -232,7 +232,8 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
     let webView: WKWebView
     @Published var canGoBack = false
     @Published var currentURL: URL?
-    /// Simulator only (--show-url): the last few pages asked for, D = desktop identity, M = iPhone.
+    /// The last few pages asked for (D = desktop identity, M = iPhone) and any that failed, without their
+    /// ?query part. Shown with --show-url in the simulator, and included in "Copy page report".
     @Published var navigationLog: [String] = []
     @Published var popup: PopupItem?
     private(set) var hasLoaded = false
@@ -321,9 +322,8 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
     private func decide(_ webView: WKWebView, _ action: WKNavigationAction,
                         decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         guard let url = action.request.url else { return decisionHandler(.cancel) }
-        if Browser.logNavigation && webView === self.webView && action.targetFrame?.isMainFrame != false {
-            let mode = webView.customUserAgent == SnapchatWeb.userAgent ? "D" : "M"
-            navigationLog = Array((navigationLog + ["\(mode) \(url.absoluteString.prefix(90))"]).suffix(7))
+        if webView === self.webView && action.targetFrame?.isMainFrame != false {
+            log((webView.customUserAgent == SnapchatWeb.userAgent ? "D " : "M ") + Browser.short(url))
         }
         // Embedded frames (players, captcha, sign-in widgets) are left alone; only whole-page moves are checked.
         if action.targetFrame?.isMainFrame == false { return decisionHandler(.allow) }
@@ -400,6 +400,55 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
             }
         }
         return nil
+    }
+
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        if webView === self.webView { log("failed to open: \(error.localizedDescription)") }
+    }
+
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        if webView === self.webView { log("failed while loading: \(error.localizedDescription)") }
+    }
+
+    /// The page's process ran out of memory or crashed: note it and load the page again.
+    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        log("page process stopped (memory or crash); reloading")
+        webView.reload()
+    }
+
+    private func log(_ line: String) {
+        navigationLog = Array((navigationLog + [line]).suffix(10))
+    }
+
+    static func short(_ url: URL) -> String {
+        var c = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        c?.query = nil; c?.fragment = nil
+        return String((c?.string ?? url.absoluteString).prefix(100))
+    }
+
+    /// "Copy page report" in the settings menu: what this page is, what led here and what went wrong,
+    /// copied for pasting to whoever is fixing it. Page text is cut short; addresses lose their ?query part.
+    func copyReport(then done: @escaping () -> Void) {
+        let js = """
+        (() => {
+          const text = ((document.body && document.body.innerText) || "").replace(/\\s+/g, " ").trim().slice(0, 300);
+          const lines = window.__safetokReport ? window.__safetokReport() : ["SafeTok page script: not running on this page"];
+          const frames = document.querySelectorAll("iframe").length;
+          return [...lines, "Title: " + document.title, "Frames: " + frames, "Text: " + text].join("\\n");
+        })()
+        """
+        let header = ["SafeTok page report", "Page: " + (webView.url.map(Browser.short) ?? "none"),
+                      "Identity: " + (webView.customUserAgent == SnapchatWeb.userAgent ? "desktop" : "iPhone"),
+                      "Recent: " + navigationLog.joined(separator: " → ")]
+        webView.evaluateJavaScript(js, in: nil, in: .page) { result in
+            let body: String
+            switch result {
+            case .success(let value): body = value as? String ?? "(no page details)"
+            case .failure(let error): body = "Page details unavailable: \(error.localizedDescription)"
+            }
+            UIPasteboard.general.string = (header + [body]).joined(separator: "\n")
+            done()
+        }
     }
 
     func webViewDidClose(_ webView: WKWebView) {

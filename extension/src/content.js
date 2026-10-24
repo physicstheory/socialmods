@@ -241,7 +241,8 @@
   const ACCOUNT_BUTTONS = [/^log in$/i, /^sign up$/i, /^log in or sign up$/i, /^sign in$/i];
   function handleNags() {
     const n = site.nags || { hide: [], dismiss: [], dismissWithin: /$^/ };
-    const hide = cfg.blockAccounts ? [...n.hide, ...ACCOUNT_BUTTONS] : n.hide;
+    // No account allowed: also hide Follow / Add / Chat-style buttons wherever their label sits.
+    const hide = cfg.blockAccounts ? [...n.hide, ...ACCOUNT_BUTTONS, ...(site.followText || [])] : n.hide;
     if (!hide.length && !n.dismiss.length) return;
     // Labels can sit in plain divs/spans, so match on text and hide the clickable thing around it.
     const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_TEXT);

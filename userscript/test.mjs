@@ -126,6 +126,8 @@ check(true, "right PIN unlocks settings");
 // 5b. Snapchat at 14 in Australia: Spotlight follows For You (off), chat/login and Snap Map blocked.
 await ctx.route("https://*.snapchat.com/**", r => r.fulfill({ contentType: "text/html; charset=utf-8",
   body: `<!doctype html><meta charset="utf-8"><body><a class="snapopen" href="snapchat://">Open Snapchat</a>
+    <div class="snapadd"><span>Add</span></div>
+    <div id="snapnag" style="position:fixed;inset:0"><h3>Snapchat is better on the app</h3><a href="snapchat://">Open in Snapchat</a><button onclick="document.getElementById('snapnag').remove()">Continue</button></div>
     <article class="snappost">@nasa · moon landing</article><article class="snappost">@someone · try the #blackoutchallenge</article>` }));
 gm["safescroll.storage.v1"] = JSON.stringify({ ...store(), unlockedUntil: 0 });
 await page.goto("https://www.snapchat.com/spotlight");
@@ -141,6 +143,8 @@ await page.goto("https://www.snapchat.com/add/nasa"); await page.waitForTimeout(
 const shownSnap = await page.$$eval('.snappost', els => els.filter(e => getComputedStyle(e).display !== "none").map(e => e.textContent));
 check(shownSnap.length === 1, "Snapchat: harmful post filtered " + JSON.stringify(shownSnap));
 check(await page.$eval(".snapopen", e => getComputedStyle(e).display === "none"), "Snapchat: 'Open Snapchat' hidden");
+check(await page.evaluate(() => !document.getElementById("snapnag")), "Snapchat: 'better on the app' pop-up dismissed (Continue)");
+check(await page.$eval(".snapadd span", e => !e.offsetParent), "Snapchat: Add hidden with no account allowed");
 
 // 6. Under 13: everything blocked.
 gm["safescroll.storage.v1"] = JSON.stringify({ ...store(), age: 11 });

@@ -57,7 +57,7 @@
         disableExplore: ['a[href*="/discover"]', 'a[href*="/lens"]', 'a[href*="/explore"]'],
         hideFriendSuggestions: ['[aria-label*="Quick Add" i]', '[aria-label*="Add Friends" i]', '[aria-label*="Suggested" i]'],
         disableStories: ['[aria-label*="Stories" i]', 'a[href*="/stories"]'],
-        disableSearch: ['input[placeholder*="Search" i]', 'a[href*="/search"]'],
+        disableSearch: ['input[placeholder*="Search" i]', 'a[href*="/search"]', 'button[aria-label*="search" i]', '[role="button"][aria-label*="search" i]'],
         disableMap: ['a[href*="map.snapchat.com"]'],
         disableDMs: ['a[href*="web.snapchat.com"]'],
         blockAccounts: ['a[href*="accounts.snapchat.com"]', 'a[href*="web.snapchat.com"]']
@@ -67,9 +67,9 @@
       allowlistKey: "snapAllowlist",
       followText: [/^add friend$/i, /^add$/i, /^accept$/i, /^subscribe$/i, /^chat$/i],
       nags: {
-        dismiss: [/^not now$/i, /^maybe later$/i, /^continue on web$/i, /^no thanks$/i],
-        dismissWithin: /open snapchat|get snapchat|download|use the app|in the app/i,
-        hide: [/^open snapchat$/i, /^get snapchat$/i, /^open in app$/i, /^download snapchat$/i, /^get the app$/i, /^open app$/i]
+        dismiss: [/^not now$/i, /^maybe later$/i, /^continue on web$/i, /^no thanks$/i, /^continue$/i],
+        dismissWithin: /open snapchat|get snapchat|download|use the app|in the app|better on the app/i,
+        hide: [/^open snapchat$/i, /^get snapchat$/i, /^open in app$/i, /^open in snapchat$/i, /^download snapchat$/i, /^get the app$/i, /^open app$/i]
       }
     },
     instagram: {

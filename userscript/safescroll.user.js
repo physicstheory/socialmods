@@ -549,7 +549,7 @@ if (!data.pinHash) {
         disableExplore: ['a[href*="/discover"]', 'a[href*="/lens"]', 'a[href*="/explore"]'],
         hideFriendSuggestions: ['[aria-label*="Quick Add" i]', '[aria-label*="Add Friends" i]', '[aria-label*="Suggested" i]'],
         disableStories: ['[aria-label*="Stories" i]', 'a[href*="/stories"]'],
-        disableSearch: ['input[placeholder*="Search" i]', 'a[href*="/search"]'],
+        disableSearch: ['input[placeholder*="Search" i]', 'a[href*="/search"]', 'button[aria-label*="search" i]', '[role="button"][aria-label*="search" i]'],
         disableMap: ['a[href*="map.snapchat.com"]'],
         disableDMs: ['a[href*="web.snapchat.com"]'],
         blockAccounts: ['a[href*="accounts.snapchat.com"]', 'a[href*="web.snapchat.com"]']
@@ -559,9 +559,9 @@ if (!data.pinHash) {
       allowlistKey: "snapAllowlist",
       followText: [/^add friend$/i, /^add$/i, /^accept$/i, /^subscribe$/i, /^chat$/i],
       nags: {
-        dismiss: [/^not now$/i, /^maybe later$/i, /^continue on web$/i, /^no thanks$/i],
-        dismissWithin: /open snapchat|get snapchat|download|use the app|in the app/i,
-        hide: [/^open snapchat$/i, /^get snapchat$/i, /^open in app$/i, /^download snapchat$/i, /^get the app$/i, /^open app$/i]
+        dismiss: [/^not now$/i, /^maybe later$/i, /^continue on web$/i, /^no thanks$/i, /^continue$/i],
+        dismissWithin: /open snapchat|get snapchat|download|use the app|in the app|better on the app/i,
+        hide: [/^open snapchat$/i, /^get snapchat$/i, /^open in app$/i, /^open in snapchat$/i, /^download snapchat$/i, /^get the app$/i, /^open app$/i]
       }
     },
     instagram: {
@@ -926,7 +926,8 @@ if (!data.pinHash) {
   const ACCOUNT_BUTTONS = [/^log in$/i, /^sign up$/i, /^log in or sign up$/i, /^sign in$/i];
   function handleNags() {
     const n = site.nags || { hide: [], dismiss: [], dismissWithin: /$^/ };
-    const hide = cfg.blockAccounts ? [...n.hide, ...ACCOUNT_BUTTONS] : n.hide;
+    // No account allowed: also hide Follow / Add / Chat-style buttons wherever their label sits.
+    const hide = cfg.blockAccounts ? [...n.hide, ...ACCOUNT_BUTTONS, ...(site.followText || [])] : n.hide;
     if (!hide.length && !n.dismiss.length) return;
     // Labels can sit in plain divs/spans, so match on text and hide the clickable thing around it.
     const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_TEXT);

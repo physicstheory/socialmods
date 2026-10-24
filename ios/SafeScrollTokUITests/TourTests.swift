@@ -16,8 +16,14 @@ final class TourTests: XCTestCase {
     private func shot(_ name: String, after seconds: Double = 2) {
         wait(seconds)
         count += 1
-        let url = URL(fileURLWithPath: dir).appendingPathComponent(String(format: "%02d-%@.png", count, name))
-        try? XCUIScreen.main.screenshot().pngRepresentation.write(to: url)
+        let file = String(format: "%02d-%@", count, name)
+        let screenshot = XCUIScreen.main.screenshot()
+        // Kept in the test results; the workflow extracts them with xcresulttool.
+        let attachment = XCTAttachment(screenshot: screenshot)
+        attachment.name = file
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        try? screenshot.pngRepresentation.write(to: URL(fileURLWithPath: dir).appendingPathComponent(file + ".png"))
     }
 
     private func launch(_ store: String?, welcomeDone: Bool, _ extra: [String] = []) -> XCUIApplication {

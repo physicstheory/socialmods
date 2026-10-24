@@ -49,8 +49,24 @@ jobs:
           mkdir -p tour
           xcodebuild test -project SafeScrollTok.xcodeproj -scheme SafeScrollTok \
             -destination "platform=iOS Simulator,id=$UDID" -derivedDataPath build \
-            TEST_RUNNER_TOUR_DIR="$PWD/tour" 2>&1 | tail -40 || true
-          ls tour
+            -resultBundlePath tour.xcresult TEST_RUNNER_TOUR_DIR="$PWD/tour" 2>&1 | tail -15 || true
+          # Pull the screenshots out of the test results and name them by step.
+          mkdir -p attachments
+          xcrun xcresulttool export attachments --path tour.xcresult --output-path attachments || true
+          python3 - <<'PY'
+          import json, os, shutil
+          try:
+              manifest = json.load(open("attachments/manifest.json"))
+          except Exception as e:
+              print("no manifest", e); manifest = []
+          for test in manifest:
+              for a in test.get("attachments", []):
+                  name = a.get("suggestedHumanReadableName", a["exportedFileName"])
+                  base = name.split("_")[0] if name[:2].isdigit() else name
+                  dest = "tour/" + (base if base.endswith(".png") else base + ".png")
+                  shutil.copy("attachments/" + a["exportedFileName"], dest)
+          print(sorted(os.listdir("tour")))
+          PY
       - name: Publish
         if: always()
         working-directory: ios
@@ -60,4 +76,4 @@ jobs:
           ls tour/*.png || exit 0
           gh release delete app-tour --cleanup-tag --yes || true
           gh release create app-tour tour/*.png --target "$GITHUB_SHA" --latest=false --prerelease \
-            --title "SafeScroll iPhone app tour" --notes "Real app in the iPhone Simulator, tapped through with idb, live TikTok."
+            --title "SafeScroll iPhone app tour" --notes "Real app in the iPhone Simulator, tapped through with XCUITest, live TikTok."

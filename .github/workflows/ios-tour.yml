@@ -1,0 +1,64 @@
+# A guided tour of the real SafeScroll iPhone app: home screen icon, first open,
+# setup, buttons and limits, with live TikTok, tapped through by idb in the iPhone
+# Simulator. Results: releases/tag/app-tour
+name: iPhone app tour
+
+on:
+  push:
+    paths: [".github/workflows/ios-tour.yml", "ios/tour/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tour:
+    runs-on: macos-15
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build for the simulator
+        working-directory: ios
+        run: |
+          brew install xcodegen
+          xcodegen
+          set -o pipefail
+          xcodebuild build -project SafeScrollTok.xcodeproj -scheme SafeScrollTok -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO | tail -5
+      - name: Install idb (simulator tapping)
+        run: |
+          brew tap facebook/fb
+          brew install idb-companion
+          python3 -m pip install --user --break-system-packages fb-idb || python3 -m pip install --user fb-idb
+          echo "$(python3 -m site --user-base)/bin" >> "$GITHUB_PATH"
+      - name: Boot simulator and install the app
+        working-directory: ios
+        run: |
+          sudo systemsetup -settimezone Australia/Melbourne >/dev/null || true
+          APP=build/Build/Products/Debug-iphonesimulator/SafeScrollTok.app
+          BID=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist")
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['devices']
+          phones=[x for r,l in d.items() if 'iOS' in r for x in l if x['name'].startswith('iPhone')]
+          pro=[x for x in phones if 'Pro' in x['name'] and 'Max' not in x['name']]
+          print((pro or phones)[-1]['udid'])")
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time 9:41 --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4 || true
+          xcrun simctl install "$UDID" "$APP"
+          echo "UDID=$UDID" >> "$GITHUB_ENV"; echo "BID=$BID" >> "$GITHUB_ENV"
+      - name: Take the tour
+        working-directory: ios
+        run: python3 tour/drive.py
+      - name: Publish
+        if: always()
+        working-directory: ios
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls tour/*.png || exit 0
+          gh release delete app-tour --cleanup-tag --yes || true
+          gh release create app-tour tour/*.png --target "$GITHUB_SHA" --latest=false --prerelease \
+            --title "SafeScroll iPhone app tour" --notes "Real app in the iPhone Simulator, tapped through with idb, live TikTok."

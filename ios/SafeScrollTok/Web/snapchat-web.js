@@ -110,10 +110,11 @@
       #safetok-back{position:fixed;z-index:2147483646;top:50%;left:0;transform:translateY(-50%);width:26px;height:58px;
         border-radius:0 14px 14px 0;border:0;background:rgba(20,18,23,.5);color:#fff;font:600 22px/58px -apple-system,system-ui;
         text-align:center;padding:0 2px 0 0;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
-      #safetok-back[hidden]{display:none}`;
+      #safetok-back[hidden]{display:none}
+      [data-safetok-camera],[data-safetok-hidden]{display:none!important}`;
     (function add() { const root = document.head || document.documentElement; if (root) root.appendChild(css); else setTimeout(add, 10); })();
 
-    let row = null, panes = [];
+    let row = null, panes = [], allPanes = [];
     const back = document.createElement("button");
     back.id = "safetok-back"; back.textContent = "‹"; back.hidden = true; back.setAttribute("aria-label", "Back to chats");
     back.addEventListener("click", () => show(0));
@@ -147,16 +148,17 @@
       const p = panes[Math.max(0, Math.min(i, panes.length - 1))];
       if (p) p.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
     }
-    function update() { back.hidden = current() === 0; }
+    function update() { back.hidden = !panes.length || current() === 0; }
 
     function setUp(found) {
       row = found.row;
       row.setAttribute("data-safetok-panes", "");
-      panes = [];
+      allPanes = [];
       for (const k of found.kids) {
         if (k.getBoundingClientRect().width <= 96) k.setAttribute("data-safetok-rail", "");
-        else { k.setAttribute("data-safetok-pane", ""); panes.push(k); }
+        else { k.setAttribute("data-safetok-pane", ""); allPanes.push(k); }
       }
+      panes = allPanes.slice();
       if (panes.length < 2) { row.removeAttribute("data-safetok-panes"); row = null; return; }
       panesActive = true;
       row.addEventListener("scroll", () => requestAnimationFrame(update), { passive: true });
@@ -188,12 +190,66 @@
       setTimeout(() => watch.disconnect(), 1200);
     }, true);
 
+    // Snapchat's web app shows a big live camera in the middle; on the phone it's hidden and the chat
+    // list stays the main screen. (Snaps and videos in chats still play: only the live camera goes.)
+    // Pop-ups and welcome screens made for a computer are fitted to the phone's width.
+    const area = r => r.width * r.height;
+    const typing = el => el.querySelector("textarea,[contenteditable='true'],input[type='text'],input:not([type])");
+    function tidy() {
+      for (const v of document.querySelectorAll("video")) {
+        const stream = v.srcObject;
+        if (!(typeof MediaStream !== "undefined" && stream instanceof MediaStream && stream.getVideoTracks().length)) continue;
+        if (v.closest("[data-safetok-camera]")) continue;
+        // The camera may be drawn on a canvas next to a hidden video (lenses): start from that canvas.
+        let start = v;
+        if (area(v.getBoundingClientRect()) < 2000) {
+          for (let p = v.parentElement, i = 0; p && i < 5; p = p.parentElement, i++) {
+            const c = [...p.querySelectorAll("canvas")].find(c => area(c.getBoundingClientRect()) > 20000);
+            if (c) { start = c; break; }
+          }
+        }
+        const base = Math.max(1, area(start.getBoundingClientRect()));
+        let box = start;
+        // Grow only through the camera's own wrappers: stop where anything sizeable sits beside it.
+        for (let p = start.parentElement; p && p !== document.body; p = p.parentElement) {
+          if (p.hasAttribute("data-safetok-pane") || p.hasAttribute("data-safetok-panes")) break;
+          const beside = [...p.children].some(c => !c.contains(box) && area(c.getBoundingClientRect()) > base * 0.15);
+          if (beside || area(p.getBoundingClientRect()) > base * 1.8 || typing(p)) break;
+          box = p;
+        }
+        box.setAttribute("data-safetok-camera", "");
+      }
+      // A column that only held the camera goes away, and comes back when it shows a chat instead.
+      if (allPanes.length) {
+        for (const p of allPanes) {
+          const camOnly = p.querySelector("[data-safetok-camera]") && !typing(p);
+          p.toggleAttribute("data-safetok-hidden", !!camOnly && allPanes.filter(x => !x.hasAttribute("data-safetok-hidden")).length > 1);
+        }
+        panes = allPanes.filter(p => !p.hasAttribute("data-safetok-hidden"));
+        update();
+      }
+      const vw = document.documentElement.clientWidth;
+      // Pop-ups, plus floating welcome/onboarding screens that aren't marked as pop-ups.
+      const floating = document.body ? [...document.body.querySelectorAll(":scope > *, :scope > * > *")]
+        .filter(el => /fixed|absolute/.test(getComputedStyle(el).position)) : [];
+      for (const d of new Set([...document.querySelectorAll("[role='dialog'],[role='alertdialog'],dialog,[aria-modal='true']"), ...floating])) {
+        if (d === back || d.hasAttribute("data-safetok-panes") || d.getBoundingClientRect().width <= vw + 2) continue;
+        d.style.setProperty("width", "calc(100vw - 16px)", "important");
+        d.style.setProperty("max-width", "calc(100vw - 16px)", "important");
+        d.style.setProperty("min-width", "0", "important");
+        d.style.setProperty("box-sizing", "border-box", "important");
+        for (const m of d.querySelectorAll("img,video,canvas,svg")) m.style.setProperty("max-width", "100%", "important");
+      }
+    }
+    setInterval(tidy, 2000);
+
     // Find the columns once the app has drawn them, and again if it redraws.
     let pending = false;
     const check = () => {
       pending = false;
+      tidy();
       if (row && row.isConnected) return;
-      row = null; panes = []; panesActive = false; back.hidden = true;
+      row = null; panes = []; allPanes = []; panesActive = false; back.hidden = true;
       const found = find();
       if (found) setUp(found);
     };

@@ -79,6 +79,15 @@ enum SnapchatWeb {
         return Gate.matches(host, hosts) || (host == "www.snapchat.com" && url.path.lowercased().hasPrefix("/web"))
     }
 
+    /// Snapchat's log-in page, continuing to the web app. Signed out, web.snapchat.com itself just sends
+    /// you to Snapchat's public home page; signed in, this goes straight through to your chats.
+    static let signInURL = URL(string: "https://accounts.snapchat.com/accounts/v2/login?continue=https%3A%2F%2Fweb.snapchat.com%2F")!
+
+    /// Where web.snapchat.com sends you when you're signed out.
+    static func isSignedOutLanding(_ url: URL) -> Bool {
+        url.host?.lowercased() == "www.snapchat.com" && url.path.lowercased().hasPrefix("/web")
+    }
+
     /// The page script, told which layout to use.
     static var script: String {
         "window.__safescrollSnapLayout = \"\(desktopLayout ? "desktop" : "phone")\"; window.__safescrollSnapSticky = \(sticky);\n"
@@ -150,6 +159,8 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
     private var requestedByApp: URL?
     /// Recent switches between the iPhone and desktop browser identity, to stop a site bouncing between them.
     private var identitySwitches: [Date] = []
+    /// When the app last sent a signed-out visit to Snapchat's web app on to its log-in page.
+    private var lastSnapchatSignIn: Date?
     private var observation: NSKeyValueObservation?
     private var urlObservation: NSKeyValueObservation?
 
@@ -237,6 +248,7 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
         if byApp { requestedByApp = nil }
         switch Gate.check(url, from: webView.url, byApp: byApp, accountsAllowed: AppModel.shared.accountsAllowed) {
         case .allow:
+            if webView === self.webView && sendToSnapchatSignIn(url) { return decisionHandler(.cancel) }
             if webView === self.webView && switchIdentityIfNeeded(for: action, byApp: byApp) { return decisionHandler(.cancel) }
             decisionHandler(.allow)
         case .blockAccounts:
@@ -246,6 +258,17 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
             decisionHandler(.cancel)
             AppModel.shared.flash(message)
         }
+    }
+
+    /// Signed out, Snapchat's web app sends you to its public home page; go to its log-in page instead
+    /// (once in a while, so a log-in that doesn't stick can't loop).
+    private func sendToSnapchatSignIn(_ url: URL) -> Bool {
+        let config = AppModel.shared.config
+        guard SnapchatWeb.isSignedOutLanding(url), AppModel.shared.accountsAllowed, config["disableDMs"] as? Bool != true,
+              lastSnapchatSignIn.map({ $0.timeIntervalSinceNow < -20 }) ?? true else { return false }
+        lastSnapchatSignIn = Date()
+        load(SnapchatWeb.signInURL)
+        return true
     }
 
     /// Snapchat's web app gets the desktop browser identity; everything else the iPhone one.

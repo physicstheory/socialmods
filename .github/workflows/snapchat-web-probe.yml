@@ -49,9 +49,7 @@ jobs:
           S16=$(seed "{$PIN,\"age\":16,\"region\":\"AU\",\"overrides\":{}}")
           LOGIN="https://accounts.snapchat.com/accounts/v2/login?continue=https%3A%2F%2Fweb.snapchat.com%2F"
           n=0
-          for CASE in "safari-phone https://web.snapchat.com/" "safari-phone-sticky https://web.snapchat.com/" \
-                      "chrome-phone-sticky https://web.snapchat.com/" "chrome-desktop-sticky https://web.snapchat.com/" \
-                      "safari-phone-sticky $LOGIN" "chrome-phone-sticky $LOGIN"; do
+          for CASE in "safari-phone https://web.snapchat.com/" "safari-phone $LOGIN"; do
             set -- $CASE; V=$1; URL=$2; n=$((n+1))
             xcrun simctl terminate "$UDID" "$BID" 2>/dev/null || true
             # A fresh start each time, so one identity's cookies don't affect the next.

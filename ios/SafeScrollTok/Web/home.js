@@ -8,7 +8,8 @@
   // you type your details into the service's own form.
   const ACCOUNT_PAGES = {
     TikTok: { signIn: "https://www.tiktok.com/login", create: "https://www.tiktok.com/signup" },
-    Snapchat: { signIn: "https://accounts.snapchat.com/accounts/v2/login", create: "https://accounts.snapchat.com/accounts/signup" }
+    // Snapchat's log-in continues to its web app (chats and snaps); signed in already, it goes straight there.
+    Snapchat: { signIn: "https://accounts.snapchat.com/accounts/v2/login?continue=https%3A%2F%2Fweb.snapchat.com%2F", create: "https://accounts.snapchat.com/accounts/signup" }
   };
 
   async function render() {
@@ -51,7 +52,7 @@
       // With chat allowed, Snapchat opens its full web app (chats, snaps, stories), laid out for the phone.
       const chat = cfg.accountsAllowed && !cfg.disableDMs;
       document.getElementById("snapTiles").innerHTML =
-        (chat ? tile("https://web.snapchat.com/", "users", "Open Snapchat", "Chats, snaps and stories")
+        (chat ? tile(ACCOUNT_PAGES.Snapchat.signIn, "users", "Open Snapchat", "Chats, snaps and stories")
               : tile("https://www.snapchat.com/", "grid", "Open Snapchat", cfg.accountsAllowed ? "Snapchat's home page · chat is off in Settings" : "Snapchat's home page and public profiles")) +
         tile("https://www.snapchat.com/spotlight", "play", "Spotlight", fy.enabled ? fySub : (fy.allowed ? "Turned off in Settings" : "Not available at this age"), fy.enabled);
       document.getElementById("snapAccount").innerHTML = account("Snapchat");

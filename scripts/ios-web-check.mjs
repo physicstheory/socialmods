@@ -103,7 +103,7 @@ check(true, "home updates live when settings change");
 check(await home.$$eval("#tiktokAccount a, #snapAccount a", as => as.map(a => a.textContent + " " + new URL(a.href).host).join("|")) ===
   "Sign in www.tiktok.com|Create an account www.tiktok.com|Sign in accounts.snapchat.com|Create an account accounts.snapchat.com",
   "sign in and create-account buttons for TikTok and Snapchat once accounts are allowed");
-check(await home.$eval("#snapTiles a.tile", a => a.href) === "https://web.snapchat.com/",
+check(new URL(await home.$eval("#snapTiles a.tile", a => a.href)).searchParams.get("continue") === "https://web.snapchat.com/",
   "Open Snapchat goes to Snapchat's full web app once chat is allowed");
 
 // Snapchat's web app: reads as a Mac but is laid out at the phone's width.

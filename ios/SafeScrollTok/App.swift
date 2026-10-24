@@ -39,7 +39,7 @@ final class AppModel: ObservableObject {
     /// Where "Snapchat" in SafeScroll opens: Snapchat's full web app (chat and snaps) when chat is allowed,
     /// otherwise Spotlight when For You is on, otherwise Snapchat's home page.
     var snapchatURL: URL {
-        if accountsAllowed && config["disableDMs"] as? Bool != true { return URL(string: "https://web.snapchat.com/")! }
+        if accountsAllowed && config["disableDMs"] as? Bool != true { return SnapchatWeb.signInURL }
         let forYou = config["forYou"] as? [String: Any]
         return URL(string: forYou?["enabled"] as? Bool == true ? "https://www.snapchat.com/spotlight" : "https://www.snapchat.com/")!
     }

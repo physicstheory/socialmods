@@ -37,3 +37,21 @@ targets:
         NSMicrophoneUsageDescription: TikTok uses the microphone when you record a video.
         NSPhotoLibraryUsageDescription: TikTok uses your photo library when you upload a video.
         NSPhotoLibraryAddUsageDescription: Lets you save videos from TikTok.
+  SafeScrollTokUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [SafeScrollTokUITests]
+    dependencies:
+      - target: SafeScrollTok
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: SafeScrollTok
+schemes:
+  SafeScrollTok:
+    build:
+      targets:
+        SafeScrollTok: all
+        SafeScrollTokUITests: [test]
+    test:
+      targets: [SafeScrollTokUITests]

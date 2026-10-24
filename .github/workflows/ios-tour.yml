@@ -5,7 +5,7 @@ name: iPhone app tour
 
 on:
   push:
-    paths: [".github/workflows/ios-tour.yml", "ios/tour/**"]
+    paths: [".github/workflows/ios-tour.yml", "ios/SafeScrollTokUITests/**"]
   workflow_dispatch:
 
 permissions:
@@ -26,13 +26,6 @@ jobs:
           xcodebuild build -project SafeScrollTok.xcodeproj -scheme SafeScrollTok -configuration Debug \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO | tail -5
-      - name: Install idb (simulator tapping)
-        run: |
-          brew tap facebook/fb
-          brew trust facebook/fb || true
-          brew install idb-companion
-          python3 -m pip install --user --break-system-packages fb-idb || python3 -m pip install --user fb-idb
-          echo "$(python3 -m site --user-base)/bin" >> "$GITHUB_PATH"
       - name: Boot simulator and install the app
         working-directory: ios
         run: |
@@ -50,9 +43,14 @@ jobs:
           xcrun simctl status_bar "$UDID" override --time 9:41 --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4 || true
           xcrun simctl install "$UDID" "$APP"
           echo "UDID=$UDID" >> "$GITHUB_ENV"; echo "BID=$BID" >> "$GITHUB_ENV"
-      - name: Take the tour
+      - name: Take the tour (XCUITest taps through the app)
         working-directory: ios
-        run: python3 tour/drive.py
+        run: |
+          mkdir -p tour
+          xcodebuild test -project SafeScrollTok.xcodeproj -scheme SafeScrollTok \
+            -destination "platform=iOS Simulator,id=$UDID" -derivedDataPath build \
+            TEST_RUNNER_TOUR_DIR="$PWD/tour" 2>&1 | tail -40 || true
+          ls tour
       - name: Publish
         if: always()
         working-directory: ios

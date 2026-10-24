@@ -87,24 +87,32 @@ check((await settings.textContent("#overview")).includes("log in and sign up are
 store.overrides = { ...(store.overrides || {}), friendAllowlist: ["sciencesam", "bakewithmia", "nasa"], disableForYou: false };
 const home = track(await ctx.newPage());
 await home.goto(origin + "/_app/home.html");
-await home.waitForSelector(".creator");
-check((await home.$$("#creators .creator")).length === 3, "home lists approved creators");
-check(!(await home.textContent("#tiles")).includes("Following"), "no Following tile without an account");
-check((await home.textContent("#tiktokAccount")).includes("start at 16"), "home explains the under-16 rule");
-check(!(await home.$("#tiktokAccount a")) && !(await home.$("#snapAccount a")), "no sign in / sign up under 16 in Australia");
-check((await home.textContent("#snapTiles")).includes("Open Snapchat") && !(await home.$("#snapTiles a.tile.off[href='https://www.snapchat.com/']")),
-  "Snapchat opens from home even with Spotlight off");
-if (shots) await home.screenshot({ path: path.join(shotsDir, "14-app-home.png") });
+await home.waitForSelector(".chip");
+const appHref = name => home.$$eval(".app", (as, n) => { const a = as.find(x => x.querySelector(".name").textContent === n); return a ? (a.getAttribute("href") || "") : null; }, name);
+check((await home.$$("#creators .chip")).length === 3, "home lists approved creators");
+check(await appHref("TikTok") === "https://www.tiktok.com/foryou", "TikTok opens For You when it's on");
+check((await home.textContent("#accounts")).includes("start at 16"), "home explains the under-16 rule");
+check(!(await home.$("#accounts a")), "no sign in / sign up under 16 in Australia");
+check(await appHref("Snapchat") === "https://www.snapchat.com/", "Snapchat opens from home without an account");
+check(await appHref("Instagram") === "" && await appHref("Threads") === "", "Meta apps locked without an account");
+if (shots) await home.screenshot({ path: path.join(shotsDir, "14-app-home.png"), fullPage: true });
 
 // 3. Settings changes reach the home page live (onChanged broadcast).
 await settings.evaluate(() => chrome.storage.local.set({ region: "default" }));
-await home.waitForFunction(() => document.getElementById("tiles").textContent.includes("Following"));
+await home.waitForFunction(() => document.querySelectorAll("#accounts a").length > 0);
 check(true, "home updates live when settings change");
-check(await home.$$eval("#tiktokAccount a, #snapAccount a", as => as.map(a => a.textContent + " " + new URL(a.href).host).join("|")) ===
-  "Sign in www.tiktok.com|Create an account www.tiktok.com|Sign in accounts.snapchat.com|Create an account accounts.snapchat.com",
-  "sign in and create-account buttons for TikTok and Snapchat once accounts are allowed");
-check(new URL(await home.$eval("#snapTiles a.tile", a => a.href)).searchParams.get("continue") === "https://web.snapchat.com/",
+check(await home.$$eval("#accounts .row b", bs => bs.map(b => b.textContent).join("|")) === "TikTok|Snapchat|Instagram|Facebook",
+  "sign in and create buttons for TikTok, Snapchat, Instagram and Facebook once accounts are allowed");
+check(new URL(await appHref("Snapchat")).searchParams.get("continue") === "https://web.snapchat.com/",
   "Open Snapchat goes to Snapchat's full web app once chat is allowed");
+check(await appHref("Instagram") === "https://www.instagram.com/", "Instagram opens once accounts are allowed");
+
+// 4. "Jump back in" shows the last page.
+await settings.evaluate(() => chrome.storage.local.set({ lastPage: "https://www.tiktok.com/@nasa" }));
+await home.waitForFunction(() => !document.getElementById("resumeWrap").hidden);
+check((await home.textContent("#resumeTitle")) === "TikTok · @nasa", "Jump back in names the last page");
+if (shots) await home.screenshot({ path: path.join(shotsDir, "14b-app-home-accounts.png"), fullPage: true });
+await settings.evaluate(() => chrome.storage.local.set({ region: "AU" }));
 
 // Snapchat's web app: reads as a Mac but is laid out at the phone's width.
 await ctx.route("https://web.snapchat.com/**", r => r.fulfill({ contentType: "text/html",
@@ -119,7 +127,7 @@ await snapWeb.close();
 if (shots) await home.screenshot({ path: path.join(shotsDir, "14b-app-home-accounts.png") });
 await settings.evaluate(() => chrome.storage.local.set({ region: "AU" }));
 
-// 4. A non-settings page can only write counters, not rules.
+// 5. A non-settings page can only write counters, not rules.
 await home.evaluate(() => chrome.storage.local.set({ age: 30, pinHash: "x", usage: { d: 1 } }));
 check(store.age === 14 && store.pinHash !== "x" && store.usage && store.usage.d === 1, "only counters writable outside settings");
 

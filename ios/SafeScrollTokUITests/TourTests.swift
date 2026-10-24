@@ -80,7 +80,7 @@ final class TourTests: XCTestCase {
 
         // ---------- Welcome ----------
         shot("welcome-after-setup", after: 4)
-        if !tap(app.buttons["Start watching"], timeout: 4) { tap(app.buttons["Watch without an account"], timeout: 2) }
+        tap(app.buttons["Get started"], timeout: 4)
         shot("start-watching", after: 8)
 
         // ---------- Cog, settings, menu ----------
@@ -91,7 +91,7 @@ final class TourTests: XCTestCase {
             app.swipeUp(); app.swipeUp(); shot("settings-scrolled-filters", after: 2)
             if tap(app.navigationBars.buttons.element(boundBy: 0), timeout: 3) {
                 shot("settings-menu", after: 1)
-                tap(app.buttons["Back to TikTok"], timeout: 3)
+                tap(app.buttons["Jump back in"], timeout: 3)
             }
         }
 

@@ -4,15 +4,26 @@ import WebKit
 
 /// Which top-level pages the app will open.
 enum Gate {
-    static let tiktokHosts = ["tiktok.com", "tiktokv.com", "tiktokv.us", "tiktokw.us", "tiktokcdn.com",
-                              "tiktokcdn-us.com", "ttwstatic.com", "byteoversea.com", "ibytedtos.com",
-                              "snapchat.com", "snap.com"] // Snapchat's own rules (chat, log in, Snap Map) are applied by the filter scripts
-    /// Sign-in providers TikTok offers ("Continue with Apple / Google / Facebook / X / LINE / Kakao").
-    static let snapchatHosts = ["snapchat.com", "snap.com"]
+    struct Service {
+        let id: String, name: String, hosts: [String]
+    }
+    static let tiktok = Service(id: "tiktok", name: "TikTok", hosts: [
+        "tiktok.com", "tiktokv.com", "tiktokv.us", "tiktokw.us", "tiktokcdn.com", "tiktokcdn-us.com",
+        "ttwstatic.com", "byteoversea.com", "ibytedtos.com"])
+    static let snapchat = Service(id: "snapchat", name: "Snapchat", hosts: ["snapchat.com", "snap.com"])
+    /// Instagram, Threads, Facebook and Messenger share Meta's log-in and link pages, so they count as one.
+    static let meta = Service(id: "meta", name: "that app", hosts: [
+        "instagram.com", "cdninstagram.com", "threads.net", "threads.com", "facebook.com", "fbcdn.net",
+        "fbsbx.com", "messenger.com"])
+    static let services = [tiktok, snapchat, meta]
+
     /// Snapchat's log in / sign up site and its web chat, which need an account.
     static let snapchatAccountHosts = ["accounts.snapchat.com", "web.snapchat.com"]
+    /// Sign-in providers TikTok offers ("Continue with Apple / Google / Facebook / X / LINE / Kakao").
     static let loginHosts = ["appleid.apple.com", "accounts.google.com", "facebook.com", "twitter.com", "x.com",
                              "access.line.me", "kauth.kakao.com", "accounts.kakao.com"]
+    /// Log in and sign up pages on Meta's sites, closed when accounts aren't allowed yet.
+    static let metaAccountPaths = ["/accounts/login", "/accounts/emailsignup", "/accounts/signup", "/login", "/reg", "/r.php", "/signup"]
 
     enum Decision { case allow, blockAccounts, block(String) }
 
@@ -20,16 +31,19 @@ enum Gate {
         list.contains { host == $0 || host.hasSuffix("." + $0) }
     }
 
-    /// Snapchat only opens from SafeScroll itself (home screen or settings menu), or from
-    /// a page that's already Snapchat — never by following a link out of TikTok.
-    /// `byApp` is true when SafeScroll itself asked for this page (settings menu, start page).
-    static func check(_ url: URL, from current: URL?, byApp: Bool = false, accountsAllowed: Bool) -> Decision {
-        let host = url.host?.lowercased() ?? ""
-        if matches(host, snapchatHosts) && !byApp {
-            let fromHost = current?.host?.lowercased() ?? ""
+    static func service(for url: URL?) -> Service? {
+        let host = url?.host?.lowercased() ?? ""
+        return services.first { matches(host, $0.hosts) }
+    }
+
+    /// Each service only opens from SafeTok itself (home screen or settings menu), or from a page of the same
+    /// service — never by following a link from one app into another (TikTok → Instagram, Snapchat → TikTok).
+    /// `byApp` is true when SafeTok itself asked for this page; `crossCheck` is false for sign-in pop-ups.
+    static func check(_ url: URL, from current: URL?, byApp: Bool = false, crossCheck: Bool = true, accountsAllowed: Bool) -> Decision {
+        if crossCheck && !byApp, let target = service(for: url) {
             let fromApp = current == nil || current?.scheme == BundleSchemeHandler.scheme
-            if !fromApp && !matches(fromHost, snapchatHosts) {
-                return .block("Open Snapchat from SafeTok's home screen or settings.")
+            if !fromApp, let from = service(for: current), from.id != target.id {
+                return .block("Open \(target.name) from SafeTok's home screen.")
             }
         }
         return check(url, accountsAllowed: accountsAllowed)
@@ -39,17 +53,75 @@ enum Gate {
         switch url.scheme?.lowercased() ?? "" {
         case BundleSchemeHandler.scheme, "about", "blob", "data": return .allow
         case "https", "http": break
-        default: return .block("Opening other apps is turned off.") // tiktok://, snssdk…://, itms-apps://
+        default: return .block("Opening other apps is turned off.") // tiktok://, snssdk…://, instagram://, itms-apps://
         }
         let host = url.host?.lowercased() ?? ""
+        let path = url.path.lowercased()
         if matches(host, snapchatAccountHosts) && !accountsAllowed { return .blockAccounts }
-        if matches(host, tiktokHosts) {
-            let p = url.path.lowercased()
-            if !accountsAllowed && (p.hasPrefix("/login") || p.hasPrefix("/signup")) { return .blockAccounts }
+        if matches(host, tiktok.hosts) {
+            if !accountsAllowed && (path.hasPrefix("/login") || path.hasPrefix("/signup")) { return .blockAccounts }
             return .allow
         }
+        if matches(host, meta.hosts) {
+            if !accountsAllowed && metaAccountPaths.contains(where: { path.hasPrefix($0) }) { return .blockAccounts }
+            return .allow
+        }
+        if matches(host, snapchat.hosts) { return .allow } // chat, log in and Snap Map rules: see sites.js
         if matches(host, loginHosts) { return accountsAllowed ? .allow : .blockAccounts }
-        return .block("Links outside TikTok stay closed.")
+        return .block("Links to other websites stay closed.")
+    }
+
+    /// The filter rules' name for the platform a page belongs to (policy.js PLATFORMS).
+    static func platform(for url: URL) -> String? {
+        let host = url.host?.lowercased() ?? ""
+        for (id, hosts) in [("tiktok", tiktok.hosts), ("snapchat", snapchat.hosts), ("instagram", ["instagram.com"]),
+                            ("threads", ["threads.net", "threads.com"]), ("messenger", ["messenger.com"]),
+                            ("facebook", ["facebook.com"])] where matches(host, hosts) {
+            return id == "facebook" && path(url).hasPrefix("/messages") ? "messenger" : id
+        }
+        return nil
+    }
+    private static func path(_ url: URL) -> String { url.path.lowercased() }
+}
+
+/// The last page you were on, kept with the settings so SafeTok's home can offer "Jump back in" too.
+enum LastPage {
+    static let key = "lastPage"
+
+    static func remember(_ url: URL) {
+        var keep: URL?
+        if url.scheme == BundleSchemeHandler.scheme {
+            if url.path.hasPrefix("/_app/home") { keep = Browser.homeURL } // not blocked pages or settings
+        } else if Gate.service(for: url) != nil, !isAccountPage(url) {
+            keep = url
+        }
+        guard let keep, SettingsStore.shared.data[key] as? String != keep.absoluteString else { return }
+        SettingsStore.shared.set([key: keep.absoluteString])
+    }
+
+    static func forget() { SettingsStore.shared.remove([key]) }
+
+    static var url: URL? { (SettingsStore.shared.data[key] as? String).flatMap(URL.init(string:)) }
+
+    /// Log-in and sign-up pages aren't worth reopening; the app's main page is.
+    static func isAccountPage(_ url: URL) -> Bool {
+        let host = url.host?.lowercased() ?? "", path = url.path.lowercased()
+        return host == "accounts.snapchat.com" || Gate.metaAccountPaths.contains { path.hasPrefix($0) }
+            || path.hasPrefix("/signup") || path.hasPrefix("/login")
+    }
+}
+
+/// Instagram, Threads, Facebook and Messenger only get the camera and microphone on pages for making a
+/// post or story, and iOS asks first. Everywhere else on Meta's sites they're switched off, so a page
+/// can't listen or watch in the background. (Picking photos and videos to post still works: that uses
+/// the iPhone's own photo picker.)
+enum MetaMedia {
+    static let postingPaths = ["/create", "/reels/create", "/stories/create", "/composer", "/compose", "/camera"]
+
+    static func decision(origin host: String, page: URL?) -> WKPermissionDecision? {
+        guard Gate.matches(host.lowercased(), Gate.meta.hosts) || Gate.service(for: page)?.id == "meta" else { return nil }
+        let path = page?.path.lowercased() ?? ""
+        return postingPaths.contains(where: { path.hasPrefix($0) || path.contains($0 + "/") }) ? .prompt : .deny
     }
 }
 
@@ -124,7 +196,11 @@ class WebUIDelegate: NSObject, WKUIDelegate {
     func webView(_ webView: WKWebView, requestMediaCapturePermissionFor origin: WKSecurityOrigin,
                  initiatedByFrame frame: WKFrameInfo, type: WKMediaCaptureType,
                  decisionHandler: @escaping (WKPermissionDecision) -> Void) {
-        decisionHandler(.grant) // iOS still shows its own camera/microphone prompt the first time
+        if let meta = MetaMedia.decision(origin: origin.host, page: webView.url) {
+            if meta == .deny { AppModel.shared.flash("Camera and microphone are off here") }
+            return decisionHandler(meta)
+        }
+        decisionHandler(.grant) // TikTok and Snapchat; iOS still shows its own prompt the first time
     }
 }
 
@@ -210,18 +286,20 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
     /// Opening Snapchat from SafeScroll's settings menu: straight to Spotlight or Snapchat's home page.
     func openSnapchat() { load(AppModel.shared.snapchatURL) }
 
+    /// Signs out of every app in SafeTok (clears their cookies and site data) and goes to SafeTok's home.
     func signOut(then done: (() -> Void)? = nil) {
         let store = WKWebsiteDataStore.default()
         store.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast) {
             DispatchQueue.main.async {
-                self.load(AppModel.shared.startURL)
+                LastPage.forget()
+                self.goHome()
                 done?()
             }
         }
     }
 
     private func blockedPageURL(_ reason: String, for url: URL) -> URL {
-        let site = Gate.matches(url.host?.lowercased() ?? "", Gate.snapchatHosts) ? "snapchat" : "tiktok"
+        let site = Gate.platform(for: url) ?? "tiktok"
         return URL(string: "safescroll://app/blocked/blocked.html?reason=\(reason)&site=\(site)")!
     }
 
@@ -246,7 +324,8 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
         if action.targetFrame?.isMainFrame == false { return decisionHandler(.allow) }
         let byApp = webView === self.webView && url == requestedByApp
         if byApp { requestedByApp = nil }
-        switch Gate.check(url, from: webView.url, byApp: byApp, accountsAllowed: AppModel.shared.accountsAllowed) {
+        switch Gate.check(url, from: webView.url, byApp: byApp, crossCheck: webView === self.webView,
+                          accountsAllowed: AppModel.shared.accountsAllowed) {
         case .allow:
             if webView === self.webView && sendToSnapchatSignIn(url) { return decisionHandler(.cancel) }
             if webView === self.webView && switchIdentityIfNeeded(for: action, byApp: byApp) { return decisionHandler(.cancel) }
@@ -283,6 +362,12 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
         if byApp { requestedByApp = url }
         webView.load(action.request)
         return true
+    }
+
+    /// Remembers the page you're on, so SafeTok reopens where you left off.
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        guard webView === self.webView, let url = webView.url else { return }
+        LastPage.remember(url)
     }
 
     // MARK: New windows open inside the app

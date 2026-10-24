@@ -26,13 +26,18 @@ final class AppModel: ObservableObject {
     let edges = EdgeSampler()
 
     var accountsAllowed: Bool { config["accountsAllowed"] as? Bool ?? false }
-    /// Where the app opens: TikTok's For You if it's on, otherwise Following. SafeScroll's own
-    /// home page (approved creators) only when there's no account and For You is off.
+    /// Where the app opens: the page you were last on, if the current rules still allow it,
+    /// otherwise SafeTok's home screen.
     var startURL: URL {
-        let forYou = config["forYou"] as? [String: Any]
-        if forYou?["enabled"] as? Bool == true { return URL(string: "https://www.tiktok.com/foryou")! }
-        if accountsAllowed { return URL(string: "https://www.tiktok.com/following")! }
+        if let last = LastPage.url, canResume(last) { return last }
         return Browser.homeURL
+    }
+
+    func canResume(_ url: URL) -> Bool {
+        if url.scheme == BundleSchemeHandler.scheme { return true }
+        guard case .allow = Gate.check(url, accountsAllowed: accountsAllowed) else { return false }
+        if let platform = Gate.platform(for: url), (config["blockedPlatforms"] as? [String] ?? []).contains(platform) { return false }
+        return true
     }
     var minAccountAge: Int { (config["minAccountAge"] as? NSNumber)?.intValue ?? 13 }
     var snapchatBlocked: Bool { (config["blockedPlatforms"] as? [String] ?? []).contains("snapchat") }
@@ -91,43 +96,64 @@ struct RootView: View {
     }
 }
 
-/// Shown once after setup: connect a TikTok account, or watch without one.
+/// Shown once after setup.
 struct WelcomeView: View {
     @EnvironmentObject var model: AppModel
+    private let pink = Color(red: 0.996, green: 0.173, blue: 0.333)
+    private let cyan = Color(red: 0.145, green: 0.957, blue: 0.933)
 
     var body: some View {
-        VStack(spacing: 16) {
-            Spacer()
-            Image(systemName: "checkmark.shield.fill")
-                .font(.system(size: 60))
-                .foregroundStyle(.linearGradient(colors: [.blue, .indigo], startPoint: .top, endPoint: .bottom))
-            Text(model.accountsAllowed ? "Connect to TikTok" : "Ready to watch")
-                .font(.title.bold())
-            if model.accountsAllowed {
-                Text("Log in or create an account. TikTok opens inside this app with your filters and limits on.")
+        ZStack {
+            LinearGradient(colors: [cyan.opacity(0.16), .clear, pink.opacity(0.14)],
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
+                .ignoresSafeArea()
+            VStack(spacing: 18) {
+                Spacer(minLength: 12)
+                Image("Logo")
+                    .resizable().frame(width: 108, height: 108)
+                    .clipShape(RoundedRectangle(cornerRadius: 25, style: .continuous))
+                    .shadow(color: pink.opacity(0.25), radius: 18, y: 8)
+                Text("Welcome to SafeTok").font(.largeTitle.bold()).multilineTextAlignment(.center)
+                Text("TikTok, Snapchat, Instagram, Threads and Facebook in one place, with your family's rules built in.")
                     .multilineTextAlignment(.center).foregroundStyle(.secondary)
-                Button { start("https://www.tiktok.com/login") } label: {
-                    Text("Sign in").frame(maxWidth: .infinity)
+                VStack(alignment: .leading, spacing: 16) {
+                    feature("checkmark.shield.fill", "\(model.config["tierLabel"] as? String ?? "Age") rules",
+                            "Filters, For You limits and bedtime follow the age set in Settings.")
+                    feature("arrow.uturn.backward.circle.fill", "Picks up where you left off",
+                            "SafeTok reopens the app and page you were last on.")
+                    if model.accountsAllowed {
+                        feature("key.fill", "Stays signed in",
+                                "Sign in once in each app. Your iPhone's Passwords can fill in the details.")
+                    } else {
+                        feature("lock.fill", "No accounts yet",
+                                "Where you live, accounts start at \(model.minAccountAge). Public videos still play.")
+                    }
                 }
-                .buttonStyle(.borderedProminent).controlSize(.large).padding(.top, 8)
-                Button { start("https://www.tiktok.com/signup") } label: {
-                    Text("Create an account").frame(maxWidth: .infinity)
+                .padding(20)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .padding(.top, 6)
+                Spacer(minLength: 12)
+                Button { start() } label: {
+                    Text("Get started").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
                 }
-                .buttonStyle(.bordered).controlSize(.large)
-                Button("Watch without an account") { start(nil) }.padding(.top, 4)
-            } else {
-                Text("Where you live, TikTok accounts start at \(model.minAccountAge), so this app runs without one. Public videos still play with all your filters on.")
-                    .multilineTextAlignment(.center).foregroundStyle(.secondary)
-                Button { start(nil) } label: { Text("Start watching").frame(maxWidth: .infinity) }
-                    .buttonStyle(.borderedProminent).controlSize(.large).padding(.top, 8)
+                .buttonStyle(.borderedProminent).controlSize(.large).tint(pink)
             }
-            Spacer()
+            .padding(.horizontal, 26).padding(.vertical, 20)
         }
-        .padding(28)
     }
 
-    private func start(_ link: String?) {
-        model.browser.load(link.flatMap(URL.init(string:)) ?? model.startURL)
+    private func feature(_ symbol: String, _ title: String, _ detail: String) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: symbol).font(.title3).foregroundStyle(pink).frame(width: 28)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.subheadline.weight(.semibold))
+                Text(detail).font(.footnote).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func start() {
+        model.browser.goHome()
         model.welcomeDone = true
     }
 }
@@ -228,18 +254,18 @@ struct SettingsSheet: View {
                 .toolbar {
                     ToolbarItem(placement: .navigationBarLeading) {
                         Menu {
-                            Button { browser.load(AppModel.shared.startURL); dismiss() } label: { Label("Back to TikTok", systemImage: "play.rectangle") }
+                            Button { browser.load(AppModel.shared.startURL); dismiss() } label: { Label("Jump back in", systemImage: "arrow.uturn.backward") }
                             Button { browser.goHome(); dismiss() } label: { Label("SafeTok home", systemImage: "house") }
                             if !AppModel.shared.snapchatBlocked {
                                 Button { browser.openSnapchat(); dismiss() } label: { Label("Open Snapchat", systemImage: "camera") }
                             }
                             Button { browser.webView.reload(); dismiss() } label: { Label("Reload page", systemImage: "arrow.clockwise") }
-                            Button("Sign out of TikTok", role: .destructive) { confirmSignOut = true }
+                            Button("Sign out of all apps", role: .destructive) { confirmSignOut = true }
                         } label: { Image(systemName: "ellipsis.circle") }
                     }
                     ToolbarItem(placement: .navigationBarTrailing) { Button("Done") { dismiss() } }
                 }
-                .confirmationDialog("Sign out of TikTok in this app?", isPresented: $confirmSignOut, titleVisibility: .visible) {
+                .confirmationDialog("Sign out of TikTok, Snapchat and the Meta apps in SafeTok?", isPresented: $confirmSignOut, titleVisibility: .visible) {
                     Button("Sign out", role: .destructive) { browser.signOut { dismiss() } }
                 }
         }

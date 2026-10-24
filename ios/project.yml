@@ -33,10 +33,10 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIRequiresFullScreen: true
         ITSAppUsesNonExemptEncryption: false
-        NSCameraUsageDescription: TikTok uses the camera when you record a video.
-        NSMicrophoneUsageDescription: TikTok uses the microphone when you record a video.
-        NSPhotoLibraryUsageDescription: TikTok uses your photo library when you upload a video.
-        NSPhotoLibraryAddUsageDescription: Lets you save videos from TikTok.
+        NSCameraUsageDescription: TikTok and Snapchat use the camera when you record a video or send a snap.
+        NSMicrophoneUsageDescription: TikTok and Snapchat use the microphone when you record a video or call.
+        NSPhotoLibraryUsageDescription: Lets you choose photos and videos to post.
+        NSPhotoLibraryAddUsageDescription: Lets you save photos and videos.
   SafeScrollTokUITests:
     type: bundle.ui-testing
     platform: iOS

@@ -107,7 +107,20 @@ jobs:
           run --seed-store "$S17" --welcome-done YES --open "https://www.snapchat.com/spotlight"; shot 21-app-snapchat-spotlight-dark-mode 20
           xcrun simctl ui "$UDID" appearance light || true
 
-          # 10. Snapchat's full web app (chat and snaps) at 16, laid out for the phone (signed out: its log-in page)
+          # 10. Threads and the Meta apps at 16 (signed out: their own log-in pages), inside SafeTok
+          run --seed-store "$S16AU" --welcome-done YES --open "https://www.instagram.com/"; shot 23-app-instagram-16 20
+          run --seed-store "$S16AU" --welcome-done YES --open "https://www.threads.com/"; shot 24-app-threads-16 20
+          run --seed-store "$S16AU" --welcome-done YES --open "https://m.facebook.com/"; shot 25-app-facebook-16 20
+
+          # 11. Reopens where you left off: open a creator's page, close the app, open it again (no --open)
+          run --seed-store "$S14AU" --welcome-done YES --open "https://www.tiktok.com/@nasa"; sleep 20
+          xcrun simctl terminate "$UDID" "$BID" || true
+          xcrun simctl launch "$UDID" "$BID" --welcome-done YES; shot 26-app-reopens-last-page 20
+          run --seed-store "$S16AU" --welcome-done YES --open "https://www.tiktok.com/@nasa"; sleep 20
+          xcrun simctl terminate "$UDID" "$BID" || true
+          xcrun simctl launch "$UDID" "$BID" --welcome-done YES --open "safescroll://app/_app/home.html"; shot 27-app-home-jump-back-in 10
+
+          # 12. Snapchat's full web app (chat and snaps) at 16, laid out for the phone (signed out: its log-in page)
           run --seed-store "$S16AU" --welcome-done YES --open "https://web.snapchat.com/"; shot 22-app-snapchat-web-16 25
           ls -la shots
 

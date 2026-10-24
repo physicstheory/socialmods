@@ -151,7 +151,8 @@
       paths: {
         disableForYou: [/^\/$/],
         disableSearch: [/^\/search/],
-        disableExplore: [/^\/search/]
+        disableExplore: [/^\/search/],
+        blockAccounts: [/^\/login/]
       },
       // Threads' "Following" feed lives at /following.
       safeLanding: "/following",

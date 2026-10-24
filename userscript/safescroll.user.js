@@ -579,6 +579,7 @@ if (!data.pinHash) {
       // Home feed defaults to algorithmic; "?variant=following" is chronological.
       forYouRedirect: (u) => (u.pathname === "/" && u.searchParams.get("variant") !== "following") ? "/?variant=following" : null,
       safeLanding: "/?variant=following",
+      signInPage: "/accounts/login/",
       hide: {
         disableExplore: ['a[href="/explore/"]'],
         disableShortVideo: ['a[href="/reels/"]', 'a[href^="/reels/"]'],
@@ -610,8 +611,9 @@ if (!data.pinHash) {
         hideFriendSuggestions: [/^\/friends\/suggestions/, /^\/friends\/?$/],
         blockAccounts: [/^\/login/, /^\/r\.php/, /^\/reg\//]
       },
-      forYouRedirect: (u) => (u.pathname === "/" || u.pathname === "/home.php") ? "/?sk=h_chr" : null,
+      forYouRedirect: (u) => (u.pathname === "/" || u.pathname === "/home.php") && u.searchParams.get("sk") !== "h_chr" ? "/?sk=h_chr" : null,
       safeLanding: "/?sk=h_chr",
+      signInPage: "/login/",
       hide: {
         disableExplore: ['a[href*="/watch"]', 'a[href*="/marketplace"]', 'a[href*="/gaming"]'],
         disableShortVideo: ['a[href*="/reel"]', '[aria-label*="Reels" i]'],
@@ -648,6 +650,7 @@ if (!data.pinHash) {
       },
       // Threads' "Following" feed lives at /following.
       safeLanding: "/following",
+      signInPage: "/login",
       hide: {
         disableForYou: ['a[href="/"][role="link"]'],
         disableSearch: ['a[href="/search"]'],
@@ -765,7 +768,11 @@ if (!data.pinHash) {
     if (onFyp) {
       if (!cfg.forYou.enabled) {
         const landing = noAccountHome() || (site.safeLanding && new URL(site.safeLanding, url).href);
-        if (landing && !isSamePage(landing, url) && !bouncedRecently()) return leaveTo(landing);
+        if (landing && !isSamePage(landing, url)) {
+          if (!bouncedRecently()) return leaveTo(landing);
+          // The Following feed keeps sending a signed-out visitor back: they need to sign in first.
+          if (!cfg.blockAccounts && site.signInPage) return leaveTo(new URL(site.signInPage, url).href);
+        }
         return blockPage("disableForYou");
       }
       const reason = forYouBlockReason();

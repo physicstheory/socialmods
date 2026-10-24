@@ -78,7 +78,11 @@
     if (onFyp) {
       if (!cfg.forYou.enabled) {
         const landing = noAccountHome() || (site.safeLanding && new URL(site.safeLanding, url).href);
-        if (landing && !isSamePage(landing, url) && !bouncedRecently()) return leaveTo(landing);
+        if (landing && !isSamePage(landing, url)) {
+          if (!bouncedRecently()) return leaveTo(landing);
+          // The Following feed keeps sending a signed-out visitor back: they need to sign in first.
+          if (!cfg.blockAccounts && site.signInPage) return leaveTo(new URL(site.signInPage, url).href);
+        }
         return blockPage("disableForYou");
       }
       const reason = forYouBlockReason();

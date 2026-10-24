@@ -29,7 +29,7 @@ final class AppModel: ObservableObject {
     /// Where the app opens: the page you were last on, if the current rules still allow it,
     /// otherwise SafeTok's home screen.
     var startURL: URL {
-        if let last = LastPage.url, canResume(last) { return last }
+        if !LastPage.wasOnHome, let last = LastPage.url, canResume(last) { return last }
         return Browser.homeURL
     }
 

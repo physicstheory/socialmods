@@ -87,6 +87,7 @@
       // Home feed defaults to algorithmic; "?variant=following" is chronological.
       forYouRedirect: (u) => (u.pathname === "/" && u.searchParams.get("variant") !== "following") ? "/?variant=following" : null,
       safeLanding: "/?variant=following",
+      signInPage: "/accounts/login/",
       hide: {
         disableExplore: ['a[href="/explore/"]'],
         disableShortVideo: ['a[href="/reels/"]', 'a[href^="/reels/"]'],
@@ -118,8 +119,9 @@
         hideFriendSuggestions: [/^\/friends\/suggestions/, /^\/friends\/?$/],
         blockAccounts: [/^\/login/, /^\/r\.php/, /^\/reg\//]
       },
-      forYouRedirect: (u) => (u.pathname === "/" || u.pathname === "/home.php") ? "/?sk=h_chr" : null,
+      forYouRedirect: (u) => (u.pathname === "/" || u.pathname === "/home.php") && u.searchParams.get("sk") !== "h_chr" ? "/?sk=h_chr" : null,
       safeLanding: "/?sk=h_chr",
+      signInPage: "/login/",
       hide: {
         disableExplore: ['a[href*="/watch"]', 'a[href*="/marketplace"]', 'a[href*="/gaming"]'],
         disableShortVideo: ['a[href*="/reel"]', '[aria-label*="Reels" i]'],
@@ -156,6 +158,7 @@
       },
       // Threads' "Following" feed lives at /following.
       safeLanding: "/following",
+      signInPage: "/login",
       hide: {
         disableForYou: ['a[href="/"][role="link"]'],
         disableSearch: ['a[href="/search"]'],

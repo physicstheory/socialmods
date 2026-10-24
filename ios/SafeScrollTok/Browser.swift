@@ -84,24 +84,29 @@ enum Gate {
     private static func path(_ url: URL) -> String { url.path.lowercased() }
 }
 
-/// The last page you were on, kept with the settings so SafeTok's home can offer "Jump back in" too.
+/// The last app page you were on (for "Jump back in" on SafeTok's home), and whether you were last on
+/// SafeTok's home itself, kept with the settings so the app reopens where you left off.
 enum LastPage {
     static let key = "lastPage"
+    static let homeKey = "lastOnHome"
 
     static func remember(_ url: URL) {
-        var keep: URL?
+        let store = SettingsStore.shared
         if url.scheme == BundleSchemeHandler.scheme {
-            if url.path.hasPrefix("/_app/home") { keep = Browser.homeURL } // not blocked pages or settings
-        } else if Gate.service(for: url) != nil, !isAccountPage(url) {
-            keep = url
+            // SafeTok's home (not blocked pages or settings); the last app page stays for "Jump back in".
+            if url.path.hasPrefix("/_app/home"), store.data[homeKey] as? Bool != true { store.set([homeKey: true]) }
+            return
         }
-        guard let keep, SettingsStore.shared.data[key] as? String != keep.absoluteString else { return }
-        SettingsStore.shared.set([key: keep.absoluteString])
+        guard Gate.service(for: url) != nil, !isAccountPage(url) else { return }
+        if store.data[key] as? String != url.absoluteString || store.data[homeKey] as? Bool != false {
+            store.set([key: url.absoluteString, homeKey: false])
+        }
     }
 
-    static func forget() { SettingsStore.shared.remove([key]) }
+    static func forget() { SettingsStore.shared.remove([key, homeKey]) }
 
     static var url: URL? { (SettingsStore.shared.data[key] as? String).flatMap(URL.init(string:)) }
+    static var wasOnHome: Bool { SettingsStore.shared.data[homeKey] as? Bool == true }
 
     /// Log-in and sign-up pages aren't worth reopening; the app's main page is.
     static func isAccountPage(_ url: URL) -> Bool {

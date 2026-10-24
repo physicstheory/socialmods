@@ -135,6 +135,16 @@ await snapBroken.goto("https://web.snapchat.com/broken");
 await snapBroken.waitForFunction(() => [...document.documentElement.children].some(e => e.tagName === "DIV" && e.style.position === "fixed"), null, { timeout: 5000 })
   .then(() => check(true, "Snapchat problem details box appears"), () => check(false, "Snapchat problem details box appears"));
 await snapBroken.close();
+
+// The stand-ins also apply where Snapchat's web app lives now, www.snapchat.com/web/.
+await ctx.route("https://www.snapchat.com/web/**", r => r.fulfill({ contentType: "text/html", body: "<!doctype html><html><head></head><body>Snapchat</body></html>" }));
+const snapNew = track(await ctx.newPage());
+await snapNew.addInitScript(() => { delete window.Notification; Object.defineProperty(Navigator.prototype, "serviceWorker", { get: () => undefined, configurable: true }); });
+await snapNew.addInitScript({ path: path.join(appRoot, "snapchat-web.js") });
+await snapNew.goto("https://www.snapchat.com/web/");
+check(await snapNew.evaluate(() => Notification.permission === "denied" && typeof navigator.serviceWorker.register === "function"),
+  "notification and service worker stand-ins at www.snapchat.com/web/");
+await snapNew.close();
 if (shots) await home.screenshot({ path: path.join(shotsDir, "14b-app-home-accounts.png") });
 await settings.evaluate(() => chrome.storage.local.set({ region: "AU" }));
 

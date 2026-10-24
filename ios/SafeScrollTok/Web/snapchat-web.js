@@ -97,7 +97,8 @@
   // web app expects them, so give it harmless stand-ins (notifications stay off). If it still fails,
   // show what went wrong so it can be fixed.
   function webAppSupport() {
-    if (location.hostname === "web.snapchat.com") standIns();
+    // The web app: web.snapchat.com (old address) or www.snapchat.com/web/ (where it lives now).
+    if (location.hostname === "web.snapchat.com" || (location.hostname === "www.snapchat.com" && location.pathname.startsWith("/web"))) standIns();
     recordProblems();
   }
 
@@ -158,6 +159,10 @@
         "MediaRecorder", "RTCPeerConnection", "indexedDB", "BroadcastChannel", "CompressionStream", "WebGL2RenderingContext", "PushManager"]
         .filter(k => !(k in window));
       if (!(navigator.locks)) missing.push("navigator.locks");
+      if (!("Notification" in window)) missing.push("Notification");
+      else if (window.Notification.name === "Notification" && String(window.Notification).includes("SafeTok")) missing.push("Notification (stand-in)");
+      if (!navigator.serviceWorker) missing.push("serviceWorker");
+      else if (navigator.serviceWorker.startMessages && !("ServiceWorkerContainer" in window && navigator.serviceWorker instanceof window.ServiceWorkerContainer)) missing.push("serviceWorker (stand-in)");
       if (!window.crossOriginIsolated) missing.push("crossOriginIsolated");
       const page = ((document.body && document.body.innerText) || "").match(/error id:?\s*\S+|version:?\s*\S+/gi) || [];
       return [

@@ -580,6 +580,8 @@ if (!data.pinHash) {
       forYouRedirect: (u) => (u.pathname === "/" && u.searchParams.get("variant") !== "following") ? "/?variant=following" : null,
       safeLanding: "/?variant=following",
       signInPage: "/accounts/login/",
+      nags: { dismiss: [/^not now$/i], dismissWithin: /get the app|open instagram|use the app/i,
+        hide: [/^open instagram$/i, /^get the app$/i, /^use the app$/i] },
       hide: {
         disableExplore: ['a[href="/explore/"]'],
         disableShortVideo: ['a[href="/reels/"]', 'a[href^="/reels/"]'],
@@ -614,6 +616,8 @@ if (!data.pinHash) {
       forYouRedirect: (u) => (u.pathname === "/" || u.pathname === "/home.php") && u.searchParams.get("sk") !== "h_chr" ? "/?sk=h_chr" : null,
       safeLanding: "/?sk=h_chr",
       signInPage: "/login/",
+      nags: { dismiss: [/^not now$/i], dismissWithin: /get facebook for|open (in )?app|use the app/i,
+        hide: [/^get facebook for (ios|iphone)/i, /^open app$/i, /^open in app$/i] },
       hide: {
         disableExplore: ['a[href*="/watch"]', 'a[href*="/marketplace"]', 'a[href*="/gaming"]'],
         disableShortVideo: ['a[href*="/reel"]', '[aria-label*="Reels" i]'],
@@ -651,6 +655,8 @@ if (!data.pinHash) {
       // Threads' "Following" feed lives at /following.
       safeLanding: "/following",
       signInPage: "/login",
+      nags: { dismiss: [/^not now$/i], dismissWithin: /better in the app|download threads/i,
+        hide: [/^get app$/i, /^it'?s better in the app$/i, /^open app$/i, /^open threads$/i] },
       hide: {
         disableForYou: ['a[href="/"][role="link"]'],
         disableSearch: ['a[href="/search"]'],

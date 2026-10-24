@@ -124,6 +124,17 @@ check(await snapWeb.evaluate(() => navigator.platform === "MacIntel" && navigato
 check(await snapWeb.evaluate(() => [...document.querySelectorAll('meta[name="viewport"]')].map(m => m.content).join("|")) ===
   "width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover", "Snapchat web app laid out at the phone's width");
 await snapWeb.close();
+
+// If Snapchat's web app still fails, a details box shows what went wrong.
+await ctx.route("https://web.snapchat.com/broken", r => r.fulfill({ contentType: "text/html",
+  body: `<!doctype html><html><head></head><body><script>setTimeout(() => { document.body.textContent = "Something went wrong"; null.boom(); }, 50)</script></body></html>` }));
+const snapBroken = track(await ctx.newPage());
+snapBroken.removeAllListeners("pageerror"); // the test page throws on purpose
+await snapBroken.addInitScript({ path: path.join(appRoot, "snapchat-web.js") });
+await snapBroken.goto("https://web.snapchat.com/broken");
+await snapBroken.waitForFunction(() => [...document.documentElement.children].some(e => e.tagName === "DIV" && e.style.position === "fixed"), null, { timeout: 5000 })
+  .then(() => check(true, "Snapchat problem details box appears"), () => check(false, "Snapchat problem details box appears"));
+await snapBroken.close();
 if (shots) await home.screenshot({ path: path.join(shotsDir, "14b-app-home-accounts.png") });
 await settings.evaluate(() => chrome.storage.local.set({ region: "AU" }));
 

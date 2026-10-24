@@ -41,6 +41,8 @@
     return result;
   };
 
+  if (location.hostname === "web.snapchat.com") webAppSupport();
+
   if (layout === "phone") {
     const PHONE = "width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover";
     let viewport = PHONE;
@@ -90,4 +92,62 @@
     const root = document.head || document.documentElement;
     if (root) root.appendChild(style); else setTimeout(add, 10);
   })();
+
+  // Desktop Safari has notifications and service workers; the iPhone's in-app browser doesn't. Snapchat's
+  // web app expects them, so give it harmless stand-ins (notifications stay off). If it still fails,
+  // show what went wrong so it can be fixed.
+  function webAppSupport() {
+    if (!("Notification" in window)) {
+      const Stub = function Notification() { throw new TypeError("Notifications are off in SafeTok"); };
+      Stub.permission = "denied";
+      Stub.requestPermission = cb => { if (typeof cb === "function") cb("denied"); return Promise.resolve("denied"); };
+      window.Notification = Stub;
+    }
+    if (!navigator.serviceWorker) {
+      const sw = {
+        controller: null,
+        ready: new Promise(() => {}),
+        register: () => Promise.reject(new DOMException("Service workers are off in SafeTok", "NotSupportedError")),
+        getRegistration: () => Promise.resolve(undefined),
+        getRegistrations: () => Promise.resolve([]),
+        startMessages() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false
+      };
+      define(Navigator.prototype, "serviceWorker", () => sw);
+    }
+    if (navigator.permissions && navigator.permissions.query) {
+      const query = navigator.permissions.query.bind(navigator.permissions);
+      navigator.permissions.query = desc => query(desc).catch(err => {
+        if (desc && /notifications|push|persistent-storage|clipboard/.test(desc.name)) return { state: "denied", onchange: null, addEventListener() {}, removeEventListener() {} };
+        throw err;
+      });
+    }
+
+    const errors = [];
+    const note = msg => { const m = String(msg).slice(0, 220); if (m && errors[errors.length - 1] !== m) errors.push(m); if (errors.length > 8) errors.shift(); };
+    addEventListener("error", e => note((e.message || (e.target && e.target.src ? "Couldn't load " + e.target.src : "error")) +
+      (e.filename ? " @ " + e.filename.split("/").pop().split("?")[0] + ":" + e.lineno : "")), true);
+    addEventListener("unhandledrejection", e => note("Promise: " + (e.reason && (e.reason.stack || e.reason.message) || e.reason)));
+    const consoleError = console.error;
+    console.error = function (...args) { note("console: " + args.map(a => (a && (a.message || a.stack)) || String(a)).join(" ")); return consoleError.apply(this, args); };
+
+    let shown = false;
+    setInterval(() => {
+      if (shown || !document.body || !/something went wrong/i.test(document.body.textContent || "")) return;
+      shown = true;
+      const host = document.createElement("div");
+      host.style.cssText = "position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:2147483647";
+      const shadow = host.attachShadow({ mode: "closed" });
+      shadow.innerHTML = `<style>
+        .p{font:13px/1.4 -apple-system,system-ui,sans-serif;background:rgba(20,18,23,.94);color:#fff;border-radius:16px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+        b{display:block;font-size:14px;margin-bottom:4px} ul{margin:6px 0 10px;padding-left:16px;max-height:30vh;overflow:auto;font:11px/1.35 ui-monospace,Menlo,monospace;color:#d6d3dc;word-break:break-word}
+        .r{display:flex;gap:8px} button{font:600 13px -apple-system,system-ui;border:0;border-radius:99px;padding:8px 14px}
+        .a{background:#fe2c55;color:#fff} .c{background:#3a3640;color:#fff}</style>
+        <div class="p"><b>SafeTok: Snapchat hit a problem</b>Take a screenshot of this box and send it to get it fixed.
+        <ul>${(errors.length ? errors : ["No error details were reported."]).map(m => `<li>${m.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]))}</li>`).join("")}</ul>
+        <div class="r"><button class="a" id="again">Try again</button><button class="c" id="close">Close</button></div></div>`;
+      shadow.getElementById("again").onclick = () => location.reload();
+      shadow.getElementById("close").onclick = () => host.remove();
+      document.documentElement.appendChild(host);
+    }, 1500);
+  }
 })();

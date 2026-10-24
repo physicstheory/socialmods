@@ -1,6 +1,6 @@
-# Finds which browser identity Snapchat's web app (web.snapchat.com) accepts inside the iPhone app:
-# Safari or Chrome, laid out at phone width or laptop width. Each screenshot shows the page address
-# at the bottom. Results: releases/tag/snapchat-web-probe
+# Snapchat's web app (www.snapchat.com/web/) inside the iPhone app: checks which security headers
+# Snapchat sends, and whether the app's web view supports cross-origin isolation (SharedArrayBuffer),
+# which the web app needs. Results: releases/tag/snapchat-web-probe
 name: Snapchat web app probe
 
 on:
@@ -47,18 +47,28 @@ jobs:
           seed() { printf '%s' "$1" | base64 | tr -d '\n'; }
           PIN='"pinSalt":"s","pinHash":"1f884ca61b18b4dcde9cc304095322b1c5b15422400c4796cf0bbadbea5f00aa"'
           S16=$(seed "{$PIN,\"age\":16,\"region\":\"AU\",\"overrides\":{}}")
-          LOGIN="https://accounts.snapchat.com/accounts/v2/login?continue=https%3A%2F%2Fweb.snapchat.com%2F"
-          n=0
-          for CASE in "safari-phone https://web.snapchat.com/" "safari-phone $LOGIN"; do
-            set -- $CASE; V=$1; URL=$2; n=$((n+1))
-            xcrun simctl terminate "$UDID" "$BID" 2>/dev/null || true
-            # A fresh start each time, so one identity's cookies don't affect the next.
-            xcrun simctl uninstall "$UDID" "$BID" || true
-            xcrun simctl install "$UDID" "$APP"
-            xcrun simctl launch "$UDID" "$BID" --seed-store "$S16" --welcome-done YES --show-url --snap-web "$V" --open "$URL"
-            sleep 25
-            xcrun simctl io "$UDID" screenshot "shots/snapweb-$n-$V.png"
+          # 1. Headers Snapchat sends to desktop Safari (COOP/COEP make SharedArrayBuffer available)
+          UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15"
+          for U in https://www.snapchat.com/web/ https://web.snapchat.com/; do
+            echo "== $U" >> shots/headers.txt
+            curl -sS -L -o /dev/null -D - -A "$UA" "$U" | grep -iE '^(HTTP/|location|cross-origin|content-security|set-cookie: [^=]*=)' | sed 's/\(set-cookie: [^=]*\)=.*/\1=…/I' >> shots/headers.txt || true
           done
+          cat shots/headers.txt
+          # 2. Does the app's web view support cross-origin isolation at all? Local test pages, with and without the headers.
+          python3 probe/isolation-server.py & sleep 2
+          n=0
+          for URL in http://localhost:8765/isolated.html http://localhost:8765/plain.html; do
+            n=$((n+1))
+            xcrun simctl terminate "$UDID" "$BID" 2>/dev/null || true
+            xcrun simctl launch "$UDID" "$BID" --seed-store "$S16" --welcome-done YES --allow-host localhost --open "$URL"
+            sleep 12
+            xcrun simctl io "$UDID" screenshot "shots/isolation-$n-app.png"
+          done
+          # The same isolated page in plain Safari, for comparison
+          xcrun simctl terminate "$UDID" "$BID" 2>/dev/null || true
+          xcrun simctl openurl "$UDID" http://localhost:8765/isolated.html || true
+          sleep 12
+          xcrun simctl io "$UDID" screenshot "shots/isolation-3-safari.png"
           ls -la shots
 
       - name: Publish
@@ -68,5 +78,5 @@ jobs:
         working-directory: ios
         run: |
           gh release delete snapchat-web-probe --cleanup-tag --yes || true
-          gh release create snapchat-web-probe shots/*.png --target "$GITHUB_SHA" --latest=false --prerelease \
+          gh release create snapchat-web-probe shots/* --target "$GITHUB_SHA" --latest=false --prerelease \
             --title "Snapchat web app probe" --notes "Which browser identity Snapchat's web app accepts inside the iPhone app."

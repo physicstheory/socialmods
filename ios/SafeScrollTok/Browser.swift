@@ -27,6 +27,12 @@ enum Gate {
 
     enum Decision { case allow, blockAccounts, block(String) }
 
+    /// Simulator only, for test pages: --allow-host localhost
+    static let testHosts: [String] = {
+        let args = ProcessInfo.processInfo.arguments
+        return args.indices.filter { args[$0] == "--allow-host" && $0 + 1 < args.count }.map { args[$0 + 1] }
+    }()
+
     static func matches(_ host: String, _ list: [String]) -> Bool {
         list.contains { host == $0 || host.hasSuffix("." + $0) }
     }
@@ -57,6 +63,7 @@ enum Gate {
         }
         let host = url.host?.lowercased() ?? ""
         let path = url.path.lowercased()
+        if testHosts.contains(host) { return .allow }
         if matches(host, snapchatAccountHosts) && !accountsAllowed { return .blockAccounts }
         if matches(host, tiktok.hosts) {
             if !accountsAllowed && (path.hasPrefix("/login") || path.hasPrefix("/signup")) { return .blockAccounts }
@@ -160,9 +167,11 @@ enum SnapchatWeb {
     /// you to Snapchat's public home page; signed in, this goes straight through to your chats.
     static let signInURL = URL(string: "https://accounts.snapchat.com/accounts/v2/login?continue=https%3A%2F%2Fweb.snapchat.com%2F")!
 
-    /// Where web.snapchat.com sends you when you're signed out.
+    /// Where Snapchat's web app (now at www.snapchat.com/web/) sends you when you're signed out:
+    /// its public home page, marked ?original_referrer=none.
     static func isSignedOutLanding(_ url: URL) -> Bool {
-        url.host?.lowercased() == "www.snapchat.com" && url.path.lowercased().hasPrefix("/web")
+        guard url.host?.lowercased() == "www.snapchat.com", url.path.isEmpty || url.path == "/" else { return false }
+        return URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.contains { $0.name == "original_referrer" } == true
     }
 
     /// The page script, told which layout to use.

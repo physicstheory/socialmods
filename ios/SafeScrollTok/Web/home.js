@@ -38,7 +38,7 @@
       const who = p.match(/^\/@([^/]+)/);
       return ["tiktok", "TikTok · " + (who ? "@" + decodeURIComponent(who[1]) : p.startsWith("/following") ? "Following" : p.startsWith("/foryou") || p === "/" ? "For You" : "TikTok")];
     }
-    if (h === "web.snapchat.com") return ["snapchat", "Snapchat · Chats"];
+    if (h === "web.snapchat.com" || (h === "www.snapchat.com" && p.startsWith("/web"))) return ["snapchat", "Snapchat · Chats"];
     if (/(^|\.)snapchat\.com$/.test(h)) {
       const who = p.match(/^\/add\/([^/]+)/);
       return ["snapchat", "Snapchat · " + (who ? "@" + decodeURIComponent(who[1]) : p.startsWith("/spotlight") ? "Spotlight" : "Home")];

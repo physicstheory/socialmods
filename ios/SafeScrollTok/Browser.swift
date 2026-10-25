@@ -278,7 +278,10 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
         config.setURLSchemeHandler(BundleSchemeHandler(), forURLScheme: BundleSchemeHandler.scheme)
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
-        config.applicationNameForUserAgent = "Version/17.5 Mobile/15E148 Safari/604.1" // look like iPhone Safari
+        // Look exactly like this iPhone's Safari: its Safari version is the iOS version (Version/26.2 on
+        // iOS 26.2). A mismatched version makes sign-up pages (TikTok) treat the app as suspicious.
+        let safari = UIDevice.current.systemVersion.split(separator: ".").prefix(2).joined(separator: ".")
+        config.applicationNameForUserAgent = "Version/\(safari) Mobile/15E148 Safari/604.1"
         config.preferences.javaScriptCanOpenWindowsAutomatically = true
         let scripts = config.userContentController
         scripts.addScriptMessageHandler(Bridge.shared, contentWorld: .defaultClient, name: "safescroll")

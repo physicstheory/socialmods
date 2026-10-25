@@ -172,15 +172,26 @@
     }
     function update() { back.hidden = !panes.length || current() === 0; }
 
-    function setUp(found) {
-      row = found.row;
-      row.setAttribute("data-safetok-panes", "");
+    // Narrow icon bars stay as they are; every other column becomes a full-width screen.
+    function classify(kids) {
       allPanes = [];
-      for (const k of found.kids) {
-        if (k.getBoundingClientRect().width <= 96) k.setAttribute("data-safetok-rail", "");
+      for (const k of kids) {
+        if (k.hasAttribute("data-safetok-rail") || (!k.hasAttribute("data-safetok-pane") && k.getBoundingClientRect().width <= 96)) k.setAttribute("data-safetok-rail", "");
         else { k.setAttribute("data-safetok-pane", ""); allPanes.push(k); }
       }
       panes = allPanes.slice();
+    }
+    // The columns in the row now (Snapchat adds one for some screens, like adding friends).
+    function columnsNow() {
+      const h = row.getBoundingClientRect().height;
+      return kidsOf(row).filter(k => k.hasAttribute("data-safetok-pane") || k.hasAttribute("data-safetok-rail") ||
+        (k.getBoundingClientRect().height > h * 0.5 && k.getBoundingClientRect().width > 40));
+    }
+
+    function setUp(found) {
+      row = found.row;
+      row.setAttribute("data-safetok-panes", "");
+      classify(found.kids);
       if (panes.length < 2) { row.removeAttribute("data-safetok-panes"); row = null; return; }
       panesActive = true;
       if (onFound) onFound();
@@ -219,8 +230,19 @@
     // list stays the main screen. (Snaps and videos in chats still play: only the live camera goes.)
     // Pop-ups and welcome screens made for a computer are fitted to the phone's width.
     const area = r => r.width * r.height;
-    const typing = el => el.querySelector("textarea,[contenteditable='true'],input[type='text'],input:not([type])");
+    // Somewhere to type (a chat box, or the search on the add-friends screen) means a real screen.
+    const typing = el => el.querySelector("textarea,[contenteditable='true'],input[type='text'],input[type='search'],input:not([type]),[role='searchbox'],[role='textbox']");
     function tidy() {
+      // A column Snapchat added (for example adding friends) becomes a screen too, and opens.
+      if (row && row.isConnected) {
+        const cols = columnsNow();
+        const added = cols.filter(k => !k.hasAttribute("data-safetok-pane") && !k.hasAttribute("data-safetok-rail"));
+        if (added.length || cols.length !== allPanes.length + kidsOf(row).filter(k => k.hasAttribute("data-safetok-rail")).length) {
+          classify(cols);
+          const fresh = added.find(k => k.hasAttribute("data-safetok-pane"));
+          if (fresh) setTimeout(() => fresh.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" }), 100);
+        }
+      }
       for (const v of document.querySelectorAll("video")) {
         const stream = v.srcObject;
         if (!(typeof MediaStream !== "undefined" && stream instanceof MediaStream && stream.getVideoTracks().length)) continue;
@@ -246,8 +268,10 @@
       }
       // A column that only held the camera goes away, and comes back when it shows a chat instead.
       if (allPanes.length) {
-        // The live camera, or the big "Click the Camera to send Snaps" area shown when no chat is open.
-        const camOnly = allPanes.map(p => !!(p.querySelector("[data-safetok-camera]") || /click the camera to send snaps/i.test(p.textContent || "")) && !typing(p));
+        // The live camera, or the big "Click the Camera to send Snaps" area shown when no chat is open
+        // (only while that's all the column shows: another screen there, like adding friends, keeps it).
+        const placeholder = p => { const t = (p.innerText || "").trim(); return t.length < 160 && /click the camera to send snaps/i.test(t); };
+        const camOnly = allPanes.map(p => !!(p.querySelector("[data-safetok-camera]") || placeholder(p)) && !typing(p));
         const keepSome = camOnly.some(c => !c); // never hide every column
         allPanes.forEach((p, i) => p.toggleAttribute("data-safetok-hidden", keepSome && camOnly[i]));
         panes = allPanes.filter(p => !p.hasAttribute("data-safetok-hidden"));
@@ -264,6 +288,20 @@
         d.style.setProperty("min-width", "0", "important");
         d.style.setProperty("box-sizing", "border-box", "important");
         for (const m of d.querySelectorAll("img,video,canvas,svg")) m.style.setProperty("max-width", "100%", "important");
+      }
+      // Nothing floats past the screen's edges: pop-overs and panels that stick out are pulled inside.
+      for (const d of new Set([...document.querySelectorAll("[role='dialog'],[role='menu'],[role='listbox'],[role='tooltip'],dialog,[aria-modal='true']"), ...floating])) {
+        if (d === back || d.hasAttribute("data-safetok-panes") || d.closest("[data-safetok-panes]")) continue;
+        const r = d.getBoundingClientRect();
+        if (r.width === 0 || (r.left >= -1 && r.right <= vw + 1)) continue;
+        if (getComputedStyle(d).position === "fixed" || getComputedStyle(d).position === "absolute") {
+          d.style.setProperty("left", "8px", "important");
+          d.style.setProperty("right", "auto", "important");
+          d.style.setProperty("transform", "none", "important");
+          d.style.setProperty("max-width", "calc(100vw - 16px)", "important");
+        } else {
+          d.style.setProperty("max-width", "100%", "important");
+        }
       }
     }
     setInterval(tidy, 2000);

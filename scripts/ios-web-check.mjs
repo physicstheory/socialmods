@@ -179,6 +179,42 @@ await snapPhone.click("#safetok-back");
 await snapPhone.waitForFunction(() => Math.abs(document.getElementById("list").getBoundingClientRect().left) < 2, null, { timeout: 3000 })
   .then(() => check(true, "back button returns to the chat list"), () => check(false, "back button returns to the chat list"));
 await snapPhone.close();
+
+// Screens Snapchat opens later fit too: adding friends in a new column, adding friends in the middle
+// column (with the camera prompt still underneath), and a pop-over hanging off the screen's edge.
+await ctx.route("https://www.snapchat.com/web/add", r => r.fulfill({ contentType: "text/html", body: `<!doctype html><html><head>
+  <style>html,body{margin:0;height:100%}#root{display:flex;height:100vh;width:100vw}#list{min-width:360px}#mid{flex:1;min-width:500px;position:relative}
+  .over{position:absolute;inset:0;background:#fff}</style></head><body>
+  <div id="root"><section id="list"><button id="addcol">Add friends (column)</button><button id="addmid">Add friends (middle)</button><button id="pop">Menu</button></section>
+  <main id="mid"><div>Click the Camera to send Snaps</div></main></div>
+  <script>
+    addcol.onclick = () => { const s = document.createElement("section"); s.id = "add"; s.style.cssText = "min-width:420px;height:100vh";
+      s.innerHTML = '<input type="search" placeholder="Find friends"><p>Quick Add</p>'; document.getElementById("root").appendChild(s); };
+    addmid.onclick = () => { const o = document.createElement("div"); o.className = "over"; o.id = "addpanel";
+      o.innerHTML = '<input type="search" placeholder="Find friends"><p>' + "Add Friends ".repeat(20) + '</p>'; mid.appendChild(o); };
+    pop.onclick = () => { const m = document.createElement("div"); m.id = "menu"; m.setAttribute("role", "menu");
+      m.style.cssText = "position:fixed;top:100px;left:300px;width:260px;height:120px;background:#eee"; document.body.appendChild(m); };
+  </script></body></html>` }));
+const snapAdd = track(await ctx.newPage());
+await snapAdd.setViewportSize({ width: 393, height: 852 });
+await snapAdd.addInitScript(() => { window.__safescrollSnapLayout = "phone"; });
+await snapAdd.addInitScript({ path: path.join(appRoot, "snapchat-web.js") });
+await snapAdd.goto("https://www.snapchat.com/web/add");
+await snapAdd.waitForTimeout(2500);
+check(await snapAdd.evaluate(() => document.getElementById("mid").hasAttribute("data-safetok-hidden")), "camera prompt column hidden at first");
+await snapAdd.click("#addmid");
+await snapAdd.waitForTimeout(2600);
+check(await snapAdd.evaluate(() => !document.getElementById("mid").hasAttribute("data-safetok-hidden")), "adding friends in the middle column shows it");
+await snapAdd.click("#safetok-back").catch(() => {});
+await snapAdd.waitForTimeout(600);
+await snapAdd.click("#addcol");
+await snapAdd.waitForTimeout(2600);
+const addBox = await snapAdd.evaluate(() => { const r = document.getElementById("add").getBoundingClientRect(); return [Math.round(r.width), Math.round(r.left)]; });
+check(addBox[0] === 393 && Math.abs(addBox[1]) < 3, `a new add-friends column becomes a full screen and opens (${addBox})`);
+await snapAdd.evaluate(() => document.getElementById("pop").click());
+await snapAdd.waitForTimeout(2600);
+check(await snapAdd.evaluate(() => document.getElementById("menu").getBoundingClientRect().right <= 393), "pop-overs are kept inside the screen's edges");
+await snapAdd.close();
 if (shots) await home.screenshot({ path: path.join(shotsDir, "14b-app-home-accounts.png") });
 await settings.evaluate(() => chrome.storage.local.set({ region: "AU" }));
 

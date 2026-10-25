@@ -85,7 +85,7 @@
       }
     };
     if (isWebApp) {
-      phonePanes();
+      phonePanes(() => { if (viewport !== PHONE) { viewport = PHONE; applyViewport(); } });
       setTimeout(() => { if (!panesActive) fitWideScreens(); }, 10000);
     } else {
       addEventListener("load", () => setTimeout(fitWideScreens, 1500));
@@ -97,7 +97,7 @@
   // becomes its own full-width screen, like the real app: swipe between them, opening a chat slides to
   // it, and the "‹" tab on the left edge goes back to the list. It works from the page's layout rather than Snapchat's (changing)
   // class names: it looks for the full-screen row whose children stand side by side.
-  function phonePanes() {
+  function phonePanes(onFound) {
     const css = document.createElement("style");
     css.textContent = `
       [data-safetok-panes]{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;
@@ -119,21 +119,42 @@
     back.id = "safetok-back"; back.textContent = "‹"; back.hidden = true; back.setAttribute("aria-label", "Back to chats");
     back.addEventListener("click", () => show(0));
 
+    // Elements to look inside: skips scripts and SafeTok's own button; wrappers with no size of their own
+    // (display: contents, portals) are looked through rather than skipped.
+    const kidsOf = el => [...el.children].filter(c => c !== back && !/^(SCRIPT|STYLE|LINK|META|NOSCRIPT|TEMPLATE)$/.test(c.tagName));
+    const box = el => el.getBoundingClientRect();
+    // The biggest element on the page is the app itself; sizes are judged against it, not the viewport
+    // (which iOS stretches when a page made for a computer is zoomed out).
+    function appBox() {
+      let best = null, bestArea = 0;
+      (function walk(el, depth) {
+        if (!el || depth > 8) return;
+        for (const c of kidsOf(el)) {
+          const r = box(c), a = area(r);
+          if (a > bestArea) { best = r; bestArea = a; }
+          walk(c, depth + 1);
+        }
+      })(document.body, 0);
+      return best;
+    }
     function find() {
-      // The layout viewport, not innerWidth/innerHeight, which grow when a too-wide page is zoomed out.
-      const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight || innerHeight;
+      const app = appBox();
+      if (!app || app.height < 100) return null;
+      // Height is judged against the app; width against the page (columns can be wider than the screen).
+      const ref = { height: app.height, width: Math.min(app.width, document.documentElement.clientWidth || app.width) };
       let found = null;
       (function walk(el, depth) {
-        if (found || !el || depth > 16) return;
-        for (const c of el.children) {
+        if (found || !el || depth > 18) return;
+        for (const c of kidsOf(el)) {
           if (found) return;
-          if (c === back || c.tagName === "SCRIPT" || c.tagName === "STYLE") continue;
-          const r = c.getBoundingClientRect();
-          if (r.height < vh * 0.6 || r.width < vw * 0.85) continue;
-          const kids = [...c.children].filter(k => { const kr = k.getBoundingClientRect(); return kr.height > vh * 0.5 && kr.width > 40; });
-          const lefts = new Set(kids.map(k => Math.round(k.getBoundingClientRect().left / 8)));
-          if (kids.length >= 2 && lefts.size >= 2) { found = { row: c, kids }; return; }
-          walk(c, depth + 1);
+          const r = box(c);
+          const big = r.height >= ref.height * 0.6 && r.width >= ref.width * 0.85;
+          if (big) {
+            const kids = kidsOf(c).filter(k => { const kr = box(k); return kr.height > ref.height * 0.5 && kr.width > 40; });
+            const lefts = new Set(kids.map(k => Math.round(box(k).left / 8)));
+            if (kids.length >= 2 && lefts.size >= 2) { found = { row: c, kids }; return; }
+          }
+          if (big || area(r) === 0) walk(c, depth + 1);
         }
       })(document.body, 0);
       return found;
@@ -147,6 +168,7 @@
     function show(i) {
       const p = panes[Math.max(0, Math.min(i, panes.length - 1))];
       if (p) p.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
+      setTimeout(update, 450);
     }
     function update() { back.hidden = !panes.length || current() === 0; }
 
@@ -161,6 +183,7 @@
       panes = allPanes.slice();
       if (panes.length < 2) { row.removeAttribute("data-safetok-panes"); row = null; return; }
       panesActive = true;
+      if (onFound) onFound();
       row.addEventListener("scroll", () => requestAnimationFrame(update), { passive: true });
       if (!back.isConnected) (document.body || document.documentElement).appendChild(back);
       row.scrollLeft = 0;
@@ -174,7 +197,7 @@
       if (location.pathname === lastPath) return;
       const deeper = location.pathname.length > lastPath.length;
       lastPath = location.pathname;
-      if (row && deeper && current() === 0) setTimeout(() => show(1), 200);
+      if (row && deeper && current() === 0) setTimeout(() => { tidy(); show(1); }, 200);
     };
     for (const m of ["pushState", "replaceState"]) {
       const orig = history[m];
@@ -182,11 +205,13 @@
     }
     addEventListener("popstate", () => { lastPath = location.pathname; if (row) show(0); });
     document.addEventListener("click", e => {
-      if (!row || !panes[0] || !panes[1] || !panes[0].contains(e.target) || current() !== 0) return;
+      if (!row || !panes[0] || !panes[0].contains(e.target) || current() !== 0) return;
       if (e.target.closest("input,textarea,[contenteditable='true'],[role='searchbox']")) return;
       if (!e.target.closest("a,button,li,[role='button'],[role='listitem'],[role='row'],[role='link'],[tabindex]")) return;
-      const watch = new MutationObserver(() => { watch.disconnect(); show(1); });
-      watch.observe(panes[1], { childList: true, subtree: true });
+      const next = allPanes[allPanes.indexOf(panes[0]) + 1];
+      if (!next) return;
+      const watch = new MutationObserver(() => { watch.disconnect(); setTimeout(() => { tidy(); show(1); }, 150); });
+      watch.observe(next, { childList: true, subtree: true, characterData: true });
       setTimeout(() => watch.disconnect(), 1200);
     }, true);
 
@@ -221,10 +246,10 @@
       }
       // A column that only held the camera goes away, and comes back when it shows a chat instead.
       if (allPanes.length) {
-        for (const p of allPanes) {
-          const camOnly = p.querySelector("[data-safetok-camera]") && !typing(p);
-          p.toggleAttribute("data-safetok-hidden", !!camOnly && allPanes.filter(x => !x.hasAttribute("data-safetok-hidden")).length > 1);
-        }
+        // The live camera, or the big "Click the Camera to send Snaps" area shown when no chat is open.
+        const camOnly = allPanes.map(p => !!(p.querySelector("[data-safetok-camera]") || /click the camera to send snaps/i.test(p.textContent || "")) && !typing(p));
+        const keepSome = camOnly.some(c => !c); // never hide every column
+        allPanes.forEach((p, i) => p.toggleAttribute("data-safetok-hidden", keepSome && camOnly[i]));
         panes = allPanes.filter(p => !p.hasAttribute("data-safetok-hidden"));
         update();
       }
@@ -259,19 +284,23 @@
 
     // For "Copy page report": how the page is laid out (sizes and tags only, no text).
     window.__safetokLayout = () => {
-      const out = [];
+      const de = document.documentElement, ref = appBox();
+      const out = [`viewport ${de.clientWidth}x${de.clientHeight} inner ${innerWidth}x${innerHeight} page ${de.scrollWidth}x${de.scrollHeight}` +
+        (ref ? ` app ${Math.round(ref.width)}x${Math.round(ref.height)}` : "")];
+      const min = ref ? area(ref) * 0.02 : 0;
       (function walk(el, depth) {
-        if (!el || depth > 6 || out.length > 40) return;
-        for (const c of el.children) {
-          const r = c.getBoundingClientRect();
-          if (r.height < (document.documentElement.clientHeight || innerHeight) * 0.4 || c === back) continue;
-          const cls = typeof c.className === "string" ? c.className.split(/\s+/)[0].slice(0, 18) : "";
-          const cs = getComputedStyle(c);
-          out.push(`${"·".repeat(depth)}${c.tagName.toLowerCase()}${cls ? "." + cls : ""} ${Math.round(r.width)}x${Math.round(r.height)} ${cs.display}${cs.display.includes("flex") ? "/" + cs.flexDirection : ""}`);
-          walk(c, depth + 1);
+        if (!el || depth > 7 || out.length > 60) return;
+        for (const c of kidsOf(el)) {
+          const r = box(c), cs = getComputedStyle(c);
+          if (area(r) >= min || cs.display === "contents") {
+            const cls = typeof c.className === "string" ? c.className.split(/\s+/)[0].slice(0, 16) : "";
+            out.push(`${depth}:${c.tagName.toLowerCase()}${cls ? "." + cls : ""} ${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}x${Math.round(r.height)} ` +
+              `${cs.display}${cs.display.includes("flex") ? "/" + cs.flexDirection : ""}${cs.position !== "static" ? " " + cs.position : ""}`);
+          }
+          if (area(r) >= min || area(r) === 0) walk(c, depth + 1);
         }
       })(document.body, 0);
-      return `panes ${panesActive ? panes.length : "not found"} | ` + out.join(" | ");
+      return `panes ${panesActive ? panes.length + " of " + allPanes.length : "not found"} | ` + out.join(" | ");
     };
   }
 

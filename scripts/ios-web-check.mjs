@@ -151,9 +151,9 @@ await ctx.route("https://www.snapchat.com/web/app", r => r.fulfill({ contentType
   <style>html,body{margin:0;height:100%}#root{display:flex;height:100vh;width:100vw}nav{width:64px;background:#222}
   #list{min-width:360px;background:#fffbe0;overflow:auto}#chat{flex:1;min-width:500px;background:#eef}#cam{min-width:400px;background:#111}
   li{padding:14px;border-bottom:1px solid #ddd;list-style:none;cursor:pointer}</style></head><body>
-  <div id="root"><nav></nav><section id="list"><ul style="margin:0;padding:0">${["Mia", "Sam", "Jo"].map((n, i) =>
+  <div style="display:contents"><div id="root"><nav></nav><section id="list"><ul style="margin:0;padding:0">${["Mia", "Sam", "Jo"].map((n, i) =>
     `<li role="button" onclick="history.pushState({}, '', '/web/c${i}'); document.getElementById('chat').textContent = 'Chat with ${n}'">${n}</li>`).join("")}</ul></section>
-  <main id="chat">Pick a chat</main><aside id="cam"><video id="v" autoplay muted style="width:100%;height:100%"></video></aside></div>
+  <main id="chat"><div>Click the Camera to send Snaps</div></main><aside id="cam"><video id="v" autoplay muted style="width:100%;height:100%"></video></aside></div></div>
   <div role="dialog" id="welcome" style="position:fixed;top:80px;left:50%;transform:translateX(-50%);width:640px;background:#fff;border:1px solid #ccc">Welcome to Snapchat for Web</div>
   <script>const c = document.createElement("canvas"); c.width = 320; c.height = 240; c.getContext("2d").fillRect(0, 0, 320, 240);
   document.getElementById("v").srcObject = c.captureStream();</script></body></html>` }));
@@ -165,13 +165,14 @@ await snapPhone.goto("https://www.snapchat.com/web/app");
 await snapPhone.waitForSelector("[data-safetok-panes]", { timeout: 5000 }).catch(() => {});
 await snapPhone.waitForTimeout(2500); // the camera check runs every 2 s
 const widths = await snapPhone.$$eval("[data-safetok-pane]:not([data-safetok-hidden])", ps => ps.map(p => Math.round(p.getBoundingClientRect().width)));
-check(widths.length === 2 && widths.every(w => w === 393), `Snapchat columns become full-width phone screens, camera column hidden (${widths.join(", ")})`);
+check(widths.length === 1 && widths[0] === 393, `chat list fills the phone; camera and "Click the Camera" columns hidden (${widths.join(", ")})`);
 check(await snapPhone.evaluate(() => getComputedStyle(document.getElementById("cam")).display === "none"), "the big live camera is hidden");
 check(await snapPhone.evaluate(() => document.getElementById("welcome").getBoundingClientRect().width <= 393), "welcome window fits the phone's width");
 if (shots) await snapPhone.screenshot({ path: path.join(shotsDir, "snap-phone-list.png") });
 await snapPhone.click("li >> text=Sam");
 await snapPhone.waitForFunction(() => Math.abs(document.getElementById("chat").getBoundingClientRect().left) < 2, null, { timeout: 3000 })
   .then(() => check(true, "opening a chat slides to it"), () => check(false, "opening a chat slides to it"));
+await snapPhone.waitForTimeout(600);
 check(await snapPhone.evaluate(() => !document.getElementById("safetok-back").hidden), "back button shows on the chat");
 if (shots) await snapPhone.screenshot({ path: path.join(shotsDir, "snap-phone-chat.png") });
 await snapPhone.click("#safetok-back");

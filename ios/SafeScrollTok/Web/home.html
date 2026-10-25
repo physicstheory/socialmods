@@ -85,6 +85,15 @@
   .locked{display:flex;gap:10px;align-items:flex-start;padding:14px;color:var(--muted);font-size:13.5px}
   .locked .ic{margin-top:2px}
 
+  /* Add a friend */
+  .addfriend{display:grid;grid-template-columns:auto 1fr;gap:10px 12px;align-items:center;padding:14px;margin-top:10px}
+  .addfriend .glyph{width:38px;height:38px;border-radius:11px}
+  .addfriend .glyph svg{width:22px;height:22px}
+  .addfriend .who b{display:block;font-size:15px}
+  .addfriend .who span{display:block;font-size:12.5px;color:var(--muted)}
+  .addfriend input{grid-column:1/2;grid-column:1/-1;font:inherit;font-size:16px;color:var(--text);background:var(--card-2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0}
+  .addfriend .btn{grid-column:1/-1;padding:10px;font-size:15px}
+
   /* Approved accounts */
   .chips{display:flex;flex-wrap:wrap;gap:8px}
   .chip{display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:99px;
@@ -116,6 +125,13 @@
 
   <h2>Accounts</h2>
   <div class="card acct" id="accounts"></div>
+
+  <form class="card addfriend" id="snapAdd" hidden>
+    <span class="glyph" id="snapAddGlyph"></span>
+    <label class="who" for="snapUser"><b>Add a friend on Snapchat</b><span>Type their username</span></label>
+    <input id="snapUser" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="username">
+    <button class="btn primary" type="submit">Add</button>
+  </form>
 
   <h2 id="creatorsHead">Approved accounts</h2>
   <div class="chips" id="creators"></div>

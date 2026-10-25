@@ -9,7 +9,8 @@
     if (!/(^|\.)snapchat\.com$/.test(location.hostname)) return;
   } else {
     if (!/^(web|accounts)\.snapchat\.com$|^www\.snapchat\.com$/.test(location.hostname)) return;
-    if (location.hostname === "www.snapchat.com" && !location.pathname.startsWith("/web")) return;
+    // On www.snapchat.com: the web app, plus pages SafeTok opened as the desktop site (people links).
+    if (location.hostname === "www.snapchat.com" && !location.pathname.startsWith("/web") && !/Macintosh/.test(navigator.userAgent)) return;
   }
   const layout = window.__safescrollSnapLayout || "phone";
   // The web app itself: web.snapchat.com (old address) or www.snapchat.com/web/ (where it lives now).

@@ -93,6 +93,7 @@ check((await home.$$("#creators .chip")).length === 3, "home lists approved crea
 check(await appHref("TikTok") === "https://www.tiktok.com/foryou", "TikTok opens For You when it's on");
 check((await home.textContent("#accounts")).includes("start at 16"), "home explains the under-16 rule");
 check(!(await home.$("#accounts a")), "no sign in / sign up under 16 in Australia");
+check(await home.evaluate(() => document.getElementById("snapAdd").hidden), "no Snapchat add-friend box under 16 in Australia");
 check(await appHref("Snapchat") === "https://www.snapchat.com/", "Snapchat opens from home without an account");
 check(await appHref("Instagram") === "" && await appHref("Threads") === "", "Meta apps locked without an account");
 if (shots) await home.screenshot({ path: path.join(shotsDir, "14-app-home.png"), fullPage: true });
@@ -106,6 +107,7 @@ check(await home.$$eval("#accounts .row b", bs => bs.map(b => b.textContent).joi
 check(new URL(await appHref("Snapchat")).searchParams.get("continue") === "https://web.snapchat.com/",
   "Open Snapchat goes to Snapchat's full web app once chat is allowed");
 check(await appHref("Instagram") === "https://www.instagram.com/", "Instagram opens once accounts are allowed");
+check(await home.evaluate(() => !document.getElementById("snapAdd").hidden), "Add a friend on Snapchat box shows once chat is allowed");
 
 // 4. "Jump back in" shows the last page.
 await settings.evaluate(() => chrome.storage.local.set({ lastPage: "https://www.tiktok.com/@nasa" }));

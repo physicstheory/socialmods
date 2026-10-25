@@ -117,6 +117,11 @@
           `<div class="btns"><a class="btn primary" href="${r.signIn}">Sign in</a><a class="btn" href="${r.create}">Create</a></div></div>`).join("")
       : `<div class="locked">${icon("lock")}<span>Where you live, accounts start at ${cfg.minAccountAge}, so signing in and creating accounts are off. Public videos on TikTok and Snapchat still play.</span></div>`;
 
+    // Add a Snapchat friend by username: opens their add-friend page as the desktop site, where
+    // "Add Friend" works while signed in. Friend rules (approved accounts only) still apply there.
+    $("snapAdd").hidden = !chat || blocked("snapchat");
+    glyph("snapchat", $("snapAddGlyph"));
+
     // Approved accounts (Settings → Friends)
     const chips = [
       ...cfg.friendAllowlist.map(u => ({ id: "tiktok", u, href: `https://www.tiktok.com/@${encodeURIComponent(u)}` })),
@@ -129,6 +134,12 @@
     $("foot").textContent = "Your family's rules are on in every app. Change them with the cog.";
     hydrate();
   }
+
+  $("snapAdd").addEventListener("submit", e => {
+    e.preventDefault();
+    const u = $("snapUser").value.trim().replace(/^@/, "");
+    if (u) location.href = "https://www.snapchat.com/add/" + encodeURIComponent(u);
+  });
 
   chrome.storage.onChanged.addListener(render);
   render();

@@ -157,10 +157,31 @@ enum SnapchatWeb {
     /// "Sticky": stay a desktop browser on every snapchat.com page, not just the web app and log in.
     static var sticky: Bool { variant.contains("sticky") }
 
+    /// Snapchat links that are about people and chats: profiles, add-friend links and shared links.
+    static let peoplePaths = ["/add/", "/@", "/t/", "/unlock"]
+
     static func wants(_ url: URL) -> Bool {
-        let host = url.host?.lowercased() ?? ""
+        let host = url.host?.lowercased() ?? "", path = url.path.lowercased()
         if sticky && Gate.matches(host, ["snapchat.com", "snap.com", "sc-static.net"]) { return true }
-        return Gate.matches(host, hosts) || (host == "www.snapchat.com" && url.path.lowercased().hasPrefix("/web"))
+        if Gate.matches(host, hosts) || (host == "www.snapchat.com" && path.hasPrefix("/web")) { return true }
+        // Signed in with chat allowed, links to people open as the desktop site too, where "Add Friend"
+        // and "Chat" work, instead of the phone site's "open the app" page.
+        return chatAllowed && (host == "www.snapchat.com" || host == "snapchat.com") && peoplePaths.contains { path.hasPrefix($0) }
+    }
+
+    static var chatAllowed: Bool {
+        AppModel.shared.accountsAllowed && AppModel.shared.config["disableDMs"] as? Bool != true
+    }
+
+    /// Snapchat's own app links (snapchat://add/name, snapchat://chat/…) open the same thing inside SafeTok.
+    static func webAddress(for url: URL) -> URL? {
+        guard url.scheme?.lowercased() == "snapchat" else { return nil }
+        let parts = ([url.host ?? ""] + url.pathComponents.filter { $0 != "/" }).filter { !$0.isEmpty }
+        if parts.first?.lowercased() == "add", parts.count > 1,
+           let u = URL(string: "https://www.snapchat.com/add/" + (parts[1].addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? "")) {
+            return u
+        }
+        return chatAllowed ? URL(string: "https://www.snapchat.com/web/")! : URL(string: "https://www.snapchat.com/")!
     }
 
     /// Snapchat's log-in page, continuing to the web app. Signed out, web.snapchat.com itself just sends
@@ -337,6 +358,12 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
         if webView === self.webView && action.targetFrame?.isMainFrame != false {
             log((webView.customUserAgent == SnapchatWeb.userAgent ? "D " : "M ") + Browser.short(url))
         }
+        // Snapchat's app links (snapchat://…) open the matching page inside SafeTok instead of being blocked.
+        if let web = SnapchatWeb.webAddress(for: url) {
+            decisionHandler(.cancel)
+            if Gate.service(for: webView.url)?.id == "snapchat" || webView.url?.scheme == BundleSchemeHandler.scheme { load(web) }
+            return
+        }
         // Embedded frames (players, captcha, sign-in widgets) are left alone; only whole-page moves are checked.
         if action.targetFrame?.isMainFrame == false { return decisionHandler(.allow) }
         let byApp = webView === self.webView && url == requestedByApp
@@ -403,7 +430,9 @@ final class Browser: WebUIDelegate, ObservableObject, WKNavigationDelegate {
             popup = PopupItem(webView: child)
             return child
         }
-        // Everything else (share links, "open in new tab") loads in the main view.
+        // Snapchat's app links open the matching page; everything else (share links, "open in new tab")
+        // loads in the main view.
+        if let url, let web = SnapchatWeb.webAddress(for: url) { load(web); return nil }
         if let url {
             switch Gate.check(url, from: webView.url, accountsAllowed: AppModel.shared.accountsAllowed) {
             case .allow: self.webView.load(action.request)

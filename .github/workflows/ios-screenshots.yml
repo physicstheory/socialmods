@@ -122,6 +122,8 @@ jobs:
 
           # 12. Snapchat's full web app (chat and snaps) at 16, laid out for the phone (signed out: its log-in page)
           run --seed-store "$S16AU" --welcome-done YES --open "https://web.snapchat.com/"; shot 22-app-snapchat-web-16 25
+          # Adding a friend: their Snapchat page opens as the desktop site (Add Friend works when signed in)
+          run --seed-store "$S16AU" --welcome-done YES --open "https://www.snapchat.com/add/nasa"; shot 28-app-snapchat-add-friend-16 20
           ls -la shots
 
       - name: Publish screenshots

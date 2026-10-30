@@ -166,11 +166,18 @@ await snapPhone.addInitScript({ path: path.join(appRoot, "snapchat-web.js") });
 await snapPhone.goto("https://www.snapchat.com/web/app");
 await snapPhone.waitForSelector("[data-safetok-panes]", { timeout: 5000 }).catch(() => {});
 await snapPhone.waitForTimeout(2500); // the camera check runs every 2 s
-const widths = await snapPhone.$$eval("[data-safetok-pane]:not([data-safetok-hidden])", ps => ps.map(p => Math.round(p.getBoundingClientRect().width)));
-check(widths.length === 1 && widths[0] === 393, `chat list fills the phone; camera and "Click the Camera" columns hidden (${widths.join(", ")})`);
-check(await snapPhone.evaluate(() => getComputedStyle(document.getElementById("cam")).display === "none"), "the big live camera is hidden");
-check(await snapPhone.evaluate(() => document.getElementById("welcome").getBoundingClientRect().width <= 393), "welcome window fits the phone's width");
+const widths = await snapPhone.$$eval("[data-safetok-pane]", ps => ps.map(p => Math.round(p.getBoundingClientRect().width)));
+check(widths.length === 3 && widths.every(w => w === 393), `each Snapchat column is a full phone screen (${widths.join(", ")})`);
+check(await snapPhone.evaluate(() => Math.abs(document.getElementById("list").getBoundingClientRect().left) < 2), "Snapchat opens on the chat list, like the app");
+check(await snapPhone.evaluate(() => !document.getElementById("safetok-tabs").hidden), "Chats / Camera switcher shows on the chat list");
 if (shots) await snapPhone.screenshot({ path: path.join(shotsDir, "snap-phone-list.png") });
+await snapPhone.click("#safetok-tabs [data-tab=camera]");
+await snapPhone.waitForFunction(() => Math.abs(document.getElementById("chat").getBoundingClientRect().left) < 2, null, { timeout: 3000 })
+  .then(() => check(true, "Camera button opens the camera screen"), () => check(false, "Camera button opens the camera screen"));
+if (shots) await snapPhone.screenshot({ path: path.join(shotsDir, "snap-phone-camera.png") });
+await snapPhone.click("#safetok-tabs [data-tab=chats]");
+await snapPhone.waitForFunction(() => Math.abs(document.getElementById("list").getBoundingClientRect().left) < 2, null, { timeout: 3000 });
+check(await snapPhone.evaluate(() => document.getElementById("welcome").getBoundingClientRect().width <= 393), "welcome window fits the phone's width");
 await snapPhone.click("li >> text=Sam");
 await snapPhone.waitForFunction(() => Math.abs(document.getElementById("chat").getBoundingClientRect().left) < 2, null, { timeout: 3000 })
   .then(() => check(true, "opening a chat slides to it"), () => check(false, "opening a chat slides to it"));
@@ -203,10 +210,10 @@ await snapAdd.addInitScript(() => { window.__safescrollSnapLayout = "phone"; });
 await snapAdd.addInitScript({ path: path.join(appRoot, "snapchat-web.js") });
 await snapAdd.goto("https://www.snapchat.com/web/add");
 await snapAdd.waitForTimeout(2500);
-check(await snapAdd.evaluate(() => document.getElementById("mid").hasAttribute("data-safetok-hidden")), "camera prompt column hidden at first");
+check(await snapAdd.evaluate(() => Math.abs(document.getElementById("list").getBoundingClientRect().left) < 2), "starts on the chat list");
 await snapAdd.click("#addmid");
-await snapAdd.waitForTimeout(2600);
-check(await snapAdd.evaluate(() => !document.getElementById("mid").hasAttribute("data-safetok-hidden")), "adding friends in the middle column shows it");
+await snapAdd.waitForFunction(() => Math.abs(document.getElementById("mid").getBoundingClientRect().left) < 2, null, { timeout: 3000 })
+  .then(() => check(true, "adding friends in the middle column slides to it"), () => check(false, "adding friends in the middle column slides to it"));
 await snapAdd.click("#safetok-back").catch(() => {});
 await snapAdd.waitForTimeout(600);
 await snapAdd.click("#addcol");

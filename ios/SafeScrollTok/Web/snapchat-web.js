@@ -95,8 +95,8 @@
   }
 
   // Snapchat's web app puts its columns side by side (chat list, chat, camera). On a phone each column
-  // becomes its own full-width screen, like the real app: swipe between them, opening a chat slides to
-  // it, and the "‹" tab on the left edge goes back to the list. It works from the page's layout rather than Snapchat's (changing)
+  // becomes its own full-width screen, like the real app: chats first, the camera one swipe (or the Camera
+  // button) away, opening a chat slides to it, and the "‹" tab on the left edge goes back to the list. It works from the page's layout rather than Snapchat's (changing)
   // class names: it looks for the full-screen row whose children stand side by side.
   function phonePanes(onFound) {
     const css = document.createElement("style");
@@ -108,21 +108,46 @@
       [data-safetok-pane]{flex:0 0 100vw!important;width:100vw!important;min-width:100vw!important;max-width:100vw!important;
         scroll-snap-align:start;scroll-snap-stop:always;box-sizing:border-box!important}
       [data-safetok-rail]{flex:0 0 auto!important;scroll-snap-align:none}
-      #safetok-back{position:fixed;z-index:2147483646;top:50%;left:0;transform:translateY(-50%);width:26px;height:58px;
-        border-radius:0 14px 14px 0;border:0;background:rgba(20,18,23,.5);color:#fff;font:600 22px/58px -apple-system,system-ui;
-        text-align:center;padding:0 2px 0 0;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
-      #safetok-back[hidden]{display:none}
-      [data-safetok-camera],[data-safetok-hidden]{display:none!important}`;
+      #safetok-back{position:fixed!important;z-index:2147483646!important;top:50%!important;left:0!important;transform:translateY(-50%)!important;
+        display:block!important;width:auto!important;height:auto!important;margin:0!important;padding:0!important;border:0!important;background:none!important}
+      #safetok-tabs{position:fixed!important;z-index:2147483646!important;left:50%!important;transform:translateX(-50%)!important;
+        bottom:calc(env(safe-area-inset-bottom) + 10px)!important;display:block!important;width:auto!important;height:auto!important;
+        margin:0!important;padding:0!important;border:0!important;background:none!important}
+      #safetok-back[hidden],#safetok-tabs[hidden]{display:none!important}`;
     (function add() { const root = document.head || document.documentElement; if (root) root.appendChild(css); else setTimeout(add, 10); })();
 
-    let row = null, panes = [], allPanes = [];
-    const back = document.createElement("button");
-    back.id = "safetok-back"; back.textContent = "‹"; back.hidden = true; back.setAttribute("aria-label", "Back to chats");
+    let row = null, panes = [], allPanes = [], cameraPane = null;
+    // SafeTok's own controls live in shadow roots, so Snapchat's styles can't change them.
+    const back = document.createElement("div");
+    back.id = "safetok-back"; back.hidden = true;
+    back.attachShadow({ mode: "open" }).innerHTML = `<style>
+      button{display:block;width:26px;height:58px;border-radius:0 14px 14px 0;border:0;margin:0;padding:0 2px 0 0;background:rgba(20,18,23,.5);
+        color:#fff;font:600 22px/58px -apple-system,system-ui,sans-serif;text-align:center;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}</style>
+      <button aria-label="Back to chats">‹</button>`;
     back.addEventListener("click", () => show(0));
+    // A small Chats / Camera switcher at the bottom, like the iPhone app's (hidden while you're typing in a chat).
+    const tabs = document.createElement("div");
+    tabs.id = "safetok-tabs"; tabs.hidden = true;
+    const tabsRoot = tabs.attachShadow({ mode: "open" });
+    tabsRoot.innerHTML = `<style>
+      .bar{display:flex;gap:4px;padding:5px;border-radius:99px;background:rgba(20,18,23,.78);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+        box-shadow:0 6px 20px rgba(0,0,0,.25)}
+      button{display:flex;align-items:center;gap:6px;border:0;margin:0;border-radius:99px;padding:9px 16px;background:transparent;
+        color:rgba(255,255,255,.8);font:600 14px -apple-system,system-ui,sans-serif;white-space:nowrap}
+      button[aria-current="true"]{background:#fffc00;color:#111}
+      svg{width:18px;height:18px;flex:none}</style><div class="bar" role="navigation" aria-label="Snapchat">` +
+      '<button data-tab="chats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>Chats</button>' +
+      '<button data-tab="camera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="3.5"/></svg>Camera</button></div>';
+    tabsRoot.addEventListener("click", e => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      if (b.dataset.tab === "chats") show(0);
+      else if (cameraPane) show(panes.indexOf(cameraPane));
+    });
 
     // Elements to look inside: skips scripts and SafeTok's own button; wrappers with no size of their own
     // (display: contents, portals) are looked through rather than skipped.
-    const kidsOf = el => [...el.children].filter(c => c !== back && !/^(SCRIPT|STYLE|LINK|META|NOSCRIPT|TEMPLATE)$/.test(c.tagName));
+    const kidsOf = el => [...el.children].filter(c => c !== back && c !== tabs && !/^(SCRIPT|STYLE|LINK|META|NOSCRIPT|TEMPLATE)$/.test(c.tagName));
     const box = el => el.getBoundingClientRect();
     // The biggest element on the page is the app itself; sizes are judged against it, not the viewport
     // (which iOS stretches when a page made for a computer is zoomed out).
@@ -171,7 +196,14 @@
       if (p) p.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
       setTimeout(update, 450);
     }
-    function update() { back.hidden = !panes.length || current() === 0; }
+    function update() {
+      const i = current(), here = panes[i];
+      back.hidden = !panes.length || i === 0;
+      tabs.hidden = !panes.length || !here || (here !== cameraPane && i !== 0) || !!(here && typing(here) && i !== 0);
+      for (const b of tabsRoot.querySelectorAll("button")) {
+        b.setAttribute("aria-current", String(b.dataset.tab === "chats" ? i === 0 : here === cameraPane));
+      }
+    }
 
     // Narrow icon bars stay as they are; every other column becomes a full-width screen.
     function classify(kids) {
@@ -198,6 +230,7 @@
       if (onFound) onFound();
       row.addEventListener("scroll", () => requestAnimationFrame(update), { passive: true });
       if (!back.isConnected) (document.body || document.documentElement).appendChild(back);
+      if (!tabs.isConnected) (document.body || document.documentElement).appendChild(tabs);
       row.scrollLeft = 0;
       update();
     }
@@ -244,38 +277,12 @@
           if (fresh) setTimeout(() => fresh.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" }), 100);
         }
       }
-      for (const v of document.querySelectorAll("video")) {
-        const stream = v.srcObject;
-        if (!(typeof MediaStream !== "undefined" && stream instanceof MediaStream && stream.getVideoTracks().length)) continue;
-        if (v.closest("[data-safetok-camera]")) continue;
-        // The camera may be drawn on a canvas next to a hidden video (lenses): start from that canvas.
-        let start = v;
-        if (area(v.getBoundingClientRect()) < 2000) {
-          for (let p = v.parentElement, i = 0; p && i < 5; p = p.parentElement, i++) {
-            const c = [...p.querySelectorAll("canvas")].find(c => area(c.getBoundingClientRect()) > 20000);
-            if (c) { start = c; break; }
-          }
-        }
-        const base = Math.max(1, area(start.getBoundingClientRect()));
-        let box = start;
-        // Grow only through the camera's own wrappers: stop where anything sizeable sits beside it.
-        for (let p = start.parentElement; p && p !== document.body; p = p.parentElement) {
-          if (p.hasAttribute("data-safetok-pane") || p.hasAttribute("data-safetok-panes")) break;
-          const beside = [...p.children].some(c => !c.contains(box) && area(c.getBoundingClientRect()) > base * 0.15);
-          if (beside || area(p.getBoundingClientRect()) > base * 1.8 || typing(p)) break;
-          box = p;
-        }
-        box.setAttribute("data-safetok-camera", "");
-      }
-      // A column that only held the camera goes away, and comes back when it shows a chat instead.
+      // Like the iPhone app: chats first, with the camera one swipe (or the Camera button) away. The
+      // column showing the camera, or Snapchat's "Click the Camera to send Snaps" prompt, is the camera.
       if (allPanes.length) {
-        // The live camera, or the big "Click the Camera to send Snaps" area shown when no chat is open
-        // (only while that's all the column shows: another screen there, like adding friends, keeps it).
-        const placeholder = p => { const t = (p.innerText || "").trim(); return t.length < 160 && /click the camera to send snaps/i.test(t); };
-        const camOnly = allPanes.map(p => !!(p.querySelector("[data-safetok-camera]") || placeholder(p)) && !typing(p));
-        const keepSome = camOnly.some(c => !c); // never hide every column
-        allPanes.forEach((p, i) => p.toggleAttribute("data-safetok-hidden", keepSome && camOnly[i]));
-        panes = allPanes.filter(p => !p.hasAttribute("data-safetok-hidden"));
+        panes = allPanes.slice();
+        const live = p => [...p.querySelectorAll("video")].some(v => typeof MediaStream !== "undefined" && v.srcObject instanceof MediaStream);
+        cameraPane = panes.find(p => !typing(p) && (live(p) || /click the camera to send snaps/i.test(p.innerText || ""))) || panes[1] || null;
         update();
       }
       const vw = document.documentElement.clientWidth;
@@ -283,7 +290,7 @@
       const floating = document.body ? [...document.body.querySelectorAll(":scope > *, :scope > * > *")]
         .filter(el => /fixed|absolute/.test(getComputedStyle(el).position)) : [];
       for (const d of new Set([...document.querySelectorAll("[role='dialog'],[role='alertdialog'],dialog,[aria-modal='true']"), ...floating])) {
-        if (d === back || d.hasAttribute("data-safetok-panes") || d.getBoundingClientRect().width <= vw + 2) continue;
+        if (d === back || d === tabs || d.hasAttribute("data-safetok-panes") || d.getBoundingClientRect().width <= vw + 2) continue;
         d.style.setProperty("width", "calc(100vw - 16px)", "important");
         d.style.setProperty("max-width", "calc(100vw - 16px)", "important");
         d.style.setProperty("min-width", "0", "important");
@@ -292,7 +299,7 @@
       }
       // Nothing floats past the screen's edges: pop-overs and panels that stick out are pulled inside.
       for (const d of new Set([...document.querySelectorAll("[role='dialog'],[role='menu'],[role='listbox'],[role='tooltip'],dialog,[aria-modal='true']"), ...floating])) {
-        if (d === back || d.hasAttribute("data-safetok-panes") || d.closest("[data-safetok-panes]")) continue;
+        if (d === back || d === tabs || d.hasAttribute("data-safetok-panes") || d.closest("[data-safetok-panes]")) continue;
         const r = d.getBoundingClientRect();
         if (r.width === 0 || (r.left >= -1 && r.right <= vw + 1)) continue;
         if (getComputedStyle(d).position === "fixed" || getComputedStyle(d).position === "absolute") {
@@ -313,7 +320,7 @@
       pending = false;
       tidy();
       if (row && row.isConnected) return;
-      row = null; panes = []; allPanes = []; panesActive = false; back.hidden = true;
+      row = null; panes = []; allPanes = []; cameraPane = null; panesActive = false; back.hidden = true; tabs.hidden = true;
       const found = find();
       if (found) setUp(found);
     };

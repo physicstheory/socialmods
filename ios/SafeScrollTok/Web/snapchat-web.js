@@ -350,9 +350,12 @@
     };
   }
 
-  // Text sized for a phone, and no sideways wobble.
+  // Text sized for a phone, and no sideways wobble. Other Snapchat pages opened as the desktop site
+  // (profiles, add-friend links) are made to fit the phone's width: nothing wider than the screen.
   const style = document.createElement("style");
-  style.textContent = "html{-webkit-text-size-adjust:100%;overflow-x:hidden}";
+  style.textContent = "html{-webkit-text-size-adjust:100%;overflow-x:hidden}" + (isWebApp || location.hostname !== "www.snapchat.com" ? "" :
+    "body{max-width:100vw!important;overflow-x:hidden!important}body *{max-width:100%!important;min-width:0!important;box-sizing:border-box!important}" +
+    "body [style*='width']{width:auto!important}");
   (function add() {
     const root = document.head || document.documentElement;
     if (root) root.appendChild(style); else setTimeout(add, 10);
@@ -445,7 +448,8 @@
 
     let shown = false;
     setInterval(() => {
-      if (shown || !document.body || !/something went wrong|error id/i.test(document.body.textContent || "")) return;
+      // Only in the web app itself, and only for an error you can actually see on screen.
+      if (shown || !isWebApp || !document.body || !/something went wrong|error id:/i.test(document.body.innerText || "")) return;
       shown = true;
       const lines = report();
       const host = document.createElement("div");
